@@ -1,0 +1,90 @@
+html_content = """<!DOCTYPE html>
+<html lang="vi" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <!-- SEO Meta Tags -->
+  <title>From Burnout to Burn Bright | Sổ tay Chăm sóc Sức khỏe Tinh thần ULIS - VNU</title>
+  <meta name="description" content="Trang web chính thức dự án From Burnout to Burn Bright - Trường Đại học Ngoại ngữ, ĐHQGHN. Giúp sinh viên nhận diện, giải mã, chuyển hóa và tái tạo năng lượng học tập.">
+  <meta name="author" content="Nhóm tác giả Trường ĐH Ngoại ngữ - ĐHQGHN (ULIS - VNU)">
+  <meta name="keywords" content="Burnout, Academic Burnout, ULIS, VNU, Sức khỏe tinh thần, Kiệt sức học tập, Chăm sóc cảm xúc, Pomodoro, 11 ngày thử thách">
+  
+  <!-- Open Graph / Social Media -->
+  <meta property="og:title" content="From Burnout to Burn Bright - ULIS VNU">
+  <meta property="og:description" content="Sổ tay Chăm sóc Sức khỏe Tinh thần & Phòng chống Kiệt sức Học tập cho sinh viên.">
+  <meta property="og:type" content="website">
+
+  <!-- Google Fonts: Josefin Sans & Nunito -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:ital,wght@0,300;0,400;0,600;0,700;1,400;1,600&family=Nunito:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            heading: ['"Josefin Sans"', 'sans-serif'],
+            sans: ['"Nunito"', 'sans-serif']
+          },
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              200: '#a7f3d0',
+              300: '#6ee7b7',
+              400: '#34d399',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+              800: '#065f46',
+              900: '#064e3b'
+            },
+            letterPink: {
+              50: '#fdf2f8',
+              100: '#fce7f3',
+              200: '#fbcfe8',
+              300: '#f472b6',
+              500: '#ec4899',
+              700: '#be185d'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <!-- App Stylesheet -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="bg-gradient-to-br from-emerald-50 via-teal-50 to-amber-50 min-h-screen text-slate-800 antialiased selection:bg-emerald-200 selection:text-emerald-900 font-sans">
+
+  <!-- Root App Container -->
+  <div id="app" class="min-h-screen flex flex-col justify-between">
+    <!-- Rendered dynamically by js/app.js -->
+  </div>
+
+  <!-- Global Modal Root Container -->
+  <div id="modalContainer" class="hidden fixed inset-0 z-50 overflow-y-auto">
+    <!-- Rendered dynamically -->
+  </div>
+
+  <!-- JavaScript Scripts in strict order -->
+  <script src="js/data.js"></script>
+  <script src="js/services.js"></script>
+  <script src="js/components.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
+"""
+
+with open("index.html", "w", encoding="utf-8") as f:
+    f.write(html_content)
+
+print("Generated index.html successfully")
