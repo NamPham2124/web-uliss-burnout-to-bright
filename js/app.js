@@ -7,14 +7,18 @@ window.APP = {
   state: {
     currentUser: null,
     activePage: 'home',
+    authTab: 'login',
     authError: null,
+    loginEmailDraft: '',
     dndSelectedStickerId: null,
     notifActiveTab: 'notifs',
     searchQuery: '',
+    fullscreenExerciseId: null,
     pomodoro: {
       timer: null,
       timeLeft: 25 * 60,
-      isRunning: false
+      isRunning: false,
+      sessionsCompleted: 0
     }
   },
 
@@ -32,16 +36,19 @@ window.APP = {
 
     // 3. Listen to URL Hash changes
     window.addEventListener('hashchange', () => {
+      if (!this.state.currentUser) return;
       const hash = window.location.hash.replace('#', '').trim();
-      if (hash) {
+      if (hash && hash !== this.state.activePage) {
         this.navigateTo(hash, false);
       }
     });
 
-    // Check initial hash
-    const initialHash = window.location.hash.replace('#', '').trim();
-    if (initialHash) {
-      this.state.activePage = initialHash;
+    // Check initial hash if authenticated
+    if (this.state.currentUser) {
+      const initialHash = window.location.hash.replace('#', '').trim();
+      if (initialHash) {
+        this.state.activePage = initialHash;
+      }
     }
 
     // 4. Modal container background click listener
@@ -54,7 +61,21 @@ window.APP = {
       });
     }
 
-    // 5. Initial Render
+    // 5. Fullscreen change listener
+    document.addEventListener('fullscreenchange', () => {
+      if (!document.fullscreenElement && this.state.fullscreenExerciseId) {
+        this.exitExerciseFullscreen(false);
+      }
+    });
+
+    // Escape key listener for fullscreen
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && this.state.fullscreenExerciseId) {
+        this.exitExerciseFullscreen(true);
+      }
+    });
+
+    // 6. Initial Render
     this.render();
     console.log("Burn Bright App fully initialized.");
   },
@@ -63,6 +84,11 @@ window.APP = {
   // 2. NAVIGATION & ROUTING
   // =========================================================================
   navigateTo: function(pageId, updateHash = true) {
+    if (!this.state.currentUser) {
+      this.render();
+      return;
+    }
+
     this.state.activePage = pageId;
     this.state.dndSelectedStickerId = null;
     this.state.authError = null;
@@ -77,13 +103,13 @@ window.APP = {
       drawer.classList.add('hidden');
     }
 
-    // Record last activity if authenticated
-    if (this.state.currentUser && ['ch1', 'ch2', 'ch3', 'ch4'].includes(pageId)) {
+    // Record last activity
+    if (['ch1', 'ch2', 'ch3', 'ch4'].includes(pageId)) {
       const titles = {
         ch1: 'Chương 1: Bài Test Đánh giá Burnout',
         ch2: 'Chương 2: Mô hình Tảng băng trôi',
         ch3: 'Chương 3: Kéo thả & Pomodoro',
-        ch4: 'Chương 4: Thử thách 11 Ngày & Video'
+        ch4: 'Chương 4: Thử thách 11 Ngày & Thư Tương Lai'
       };
       window.SERVICES.Progress.recordLastActivity(this.state.currentUser.id, {
         chapterId: parseInt(pageId.replace('ch', '')),
@@ -98,12 +124,19 @@ window.APP = {
 
   resumeLearning: function() {
     if (!this.state.currentUser) {
-      this.navigateTo('login');
+      this.render();
       return;
     }
     const last = window.SERVICES.Progress.getLastActiveActivity(this.state.currentUser.id);
     this.showToast(`Đang đưa bạn đến: ${last.title}`, 'info');
     this.navigateTo(last.path || 'ch1');
+  },
+
+  scrollToDay11: function() {
+    const el = document.getElementById('day11FutureLetterSection');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
   },
 
   toggleMobileNav: function() {
@@ -114,8 +147,14 @@ window.APP = {
   },
 
   // =========================================================================
-  // 3. AUTHENTICATION HANDLERS
+  // 3. AUTHENTICATION HANDLERS (FIRST GATE)
   // =========================================================================
+  switchAuthTab: function(tab) {
+    this.state.authTab = tab;
+    this.state.authError = null;
+    this.render();
+  },
+
   handleLogin: function(e) {
     e.preventDefault();
     const email = document.getElementById('loginEmail')?.value;
@@ -125,10 +164,10 @@ window.APP = {
     if (res.success) {
       this.state.currentUser = res.user;
       this.state.authError = null;
-      this.state.loginEmailDraft = null;
+      this.state.loginEmailDraft = '';
       window.SERVICES.EmailNotification.checkAllTriggers(res.user.id);
-      this.showToast(`Chào mừng ${res.user.name} đã quay trở lại!`, 'success');
-      this.navigateTo('dashboard');
+      this.showToast(`Chào mừng ${res.user.name} đến với Burn Bright!`, 'success');
+      this.navigateTo('home');
     } else {
       this.state.authError = res.message;
       this.state.loginEmailDraft = email;
@@ -148,7 +187,7 @@ window.APP = {
       this.state.currentUser = res.user;
       this.state.authError = null;
       this.showToast(`Tài khoản đã được tạo thành công! Chào mừng ${res.user.name}!`, 'success');
-      this.navigateTo('dashboard');
+      this.navigateTo('home');
     } else {
       this.state.authError = res.message;
       this.render();
@@ -159,19 +198,103 @@ window.APP = {
     const guest = window.SERVICES.Auth.loginGuest();
     this.state.currentUser = guest;
     this.state.authError = null;
-    this.showToast('Đã đăng nhập dưới quyền Bạn Đọc Khách!', 'info');
-    this.navigateTo('ch1');
+    this.showToast('Đã mở khóa toàn bộ nền tảng dưới quyền Bạn Đọc Khách!', 'info');
+    this.navigateTo('home');
   },
 
   logout: function() {
     window.SERVICES.Auth.logout();
     this.state.currentUser = null;
+    window.SERVICES.Audio.pause();
     this.showToast('Đã đăng xuất tài khoản.', 'info');
-    this.navigateTo('home');
+    this.render();
   },
 
   // =========================================================================
-  // 4. CHAPTER 1 HANDLERS (Assessment & Scoring)
+  // 4. GENTLE AMBIENT BACKGROUND MUSIC CONTROLS
+  // =========================================================================
+  toggleAudioPlay: function() {
+    const isPlaying = window.SERVICES.Audio.toggle();
+    const state = window.SERVICES.Audio.getState();
+    if (isPlaying) {
+      this.showToast(`🎵 Đang phát: ${state.trackInfo.name}`, 'info');
+    } else {
+      this.showToast('Đã tạm dừng nhạc nền.', 'info');
+    }
+    this.render();
+  },
+
+  setAudioVolume: function(val) {
+    window.SERVICES.Audio.setVolume(val);
+  },
+
+  changeAudioTrack: function(trackKey) {
+    window.SERVICES.Audio.setTrack(trackKey);
+    const state = window.SERVICES.Audio.getState();
+    this.showToast(`🎵 Đã đổi sang: ${state.trackInfo.name}`, 'info');
+    this.render();
+  },
+
+  // =========================================================================
+  // 5. FULLSCREEN FOCUS MODE FOR EXERCISES
+  // =========================================================================
+  toggleExerciseFullscreen: function(exerciseId, title) {
+    const el = document.getElementById(exerciseId);
+    if (!el) return;
+
+    if (this.state.fullscreenExerciseId === exerciseId) {
+      this.exitExerciseFullscreen(true);
+      return;
+    }
+
+    // Exit any existing
+    if (this.state.fullscreenExerciseId) {
+      this.exitExerciseFullscreen(false);
+    }
+
+    this.state.fullscreenExerciseId = exerciseId;
+    el.classList.add('fullscreen-exercise-active');
+
+    // Inject zen toolbar
+    const tbContainer = document.getElementById('zenToolbar_' + exerciseId);
+    if (tbContainer) {
+      tbContainer.innerHTML = COMPONENTS.renderFullscreenZenToolbar(exerciseId, title);
+    }
+
+    // Request browser fullscreen if available
+    try {
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      }
+    } catch (e) {}
+
+    this.showToast(`Đã bật Chế độ Tập trung Toàn Màn Hình cho: ${title}`, 'success');
+  },
+
+  exitExerciseFullscreen: function(requestBrowserExit = true) {
+    if (this.state.fullscreenExerciseId) {
+      const el = document.getElementById(this.state.fullscreenExerciseId);
+      if (el) {
+        el.classList.remove('fullscreen-exercise-active');
+      }
+      const tbContainer = document.getElementById('zenToolbar_' + this.state.fullscreenExerciseId);
+      if (tbContainer) {
+        tbContainer.innerHTML = '';
+      }
+      this.state.fullscreenExerciseId = null;
+    }
+
+    if (requestBrowserExit && document.fullscreenElement) {
+      try {
+        if (document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        }
+      } catch (e) {}
+    }
+  },
+
+  // =========================================================================
+  // 6. CHAPTER 1 HANDLERS (Assessment & Scoring)
   // =========================================================================
   calculateBurnoutScore: function(e) {
     if (e && e.preventDefault) e.preventDefault();
@@ -209,9 +332,9 @@ window.APP = {
       userData.progress.ch1.completed = true;
       window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
 
-      // Record Streak Meaningful Activity
-      const streakRes = window.SERVICES.Streak.recordActivity(this.state.currentUser.id, "Hoàn thành Bài Test Burnout");
-      this.showToast(streakRes.message || 'Đã ghi nhận điểm số Burnout!', 'success');
+      // Record Streak Activity
+      window.SERVICES.Streak.recordActivity(this.state.currentUser.id, "Hoàn thành Bài Test Burnout");
+      this.showToast('Đã lưu kết quả đánh giá Burnout chuẩn hóa!', 'success');
     }
 
     const container = document.getElementById('testResultContainer');
@@ -223,36 +346,10 @@ window.APP = {
   },
 
   // =========================================================================
-  // 5. CHAPTER 2 HANDLERS (Reading Sections & Iceberg Tool)
+  // 7. CHAPTER 2 HANDLERS (Iceberg Model Tool)
   // =========================================================================
-  toggleSectionRead: function(sectionId) {
-    if (!this.state.currentUser) {
-      this.showToast('Vui lòng đăng nhập để lưu tiến độ đọc.', 'info');
-      return;
-    }
-    const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
-    let read = userData.progress.ch2.readSections || [];
-
-    if (read.includes(sectionId)) {
-      read = read.filter(id => id !== sectionId);
-    } else {
-      read.push(sectionId);
-      if (read.length >= 3) {
-        window.SERVICES.Streak.recordActivity(this.state.currentUser.id, "Đọc trọn vẹn lý thuyết Chương 2");
-      }
-    }
-
-    userData.progress.ch2.readSections = read;
-    userData.progress.ch2.completed = (read.length >= 3);
-    window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
-    this.render();
-  },
-
   addIcebergItem: function(type) {
-    if (!this.state.currentUser) {
-      this.showToast('Vui lòng đăng nhập để lưu tảng băng cá nhân.', 'info');
-      return;
-    }
+    if (!this.state.currentUser) return;
     const inputId = type === 'floating' ? 'floatingInput' : 'submergedInput';
     const input = document.getElementById(inputId);
     const val = input?.value?.trim();
@@ -266,10 +363,12 @@ window.APP = {
     };
 
     userData.progress.ch2.iceberg[type].push(val);
+    userData.progress.ch2.completed = true;
     window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
 
-    input.value = '';
-    this.showToast(`Đã thêm mục vào phần ${type === 'floating' ? 'Nổi' : 'Chìm'}!`, 'success');
+    if (input) input.value = '';
+    window.SERVICES.Streak.recordActivity(this.state.currentUser.id, "Cập nhật Mô hình Tảng Băng Trôi");
+    this.showToast(`Đã thêm vào ${type === 'floating' ? 'Phần Nổi' : 'Phần Chìm'} của Tảng Băng!`, 'success');
     this.render();
   },
 
@@ -283,164 +382,112 @@ window.APP = {
     this.render();
   },
 
-  resetIceberg: function() {
-    if (!this.state.currentUser) return;
-    const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
-    userData.progress.ch2.iceberg = {
-      floating: [...APP_DATA.chapters[1].exercise.defaultFloating],
-      submerged: [...APP_DATA.chapters[1].exercise.defaultSubmerged]
-    };
-    window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
-    this.showToast('Đã khôi phục tảng băng về mặc định.', 'info');
-    this.render();
-  },
-
   // =========================================================================
-  // 6. CHAPTER 3 HANDLERS (Lusi Case, Drag & Drop, Pomodoro, Energy Map)
+  // 8. CHAPTER 3 HANDLERS (Drag & Drop, Pomodoro, Energy Map)
   // =========================================================================
-  handleLusiQuizAnswer: function(questionId, optIdx) {
-    if (!this.state.currentUser) return;
-    const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
-    userData.progress.ch3.lusiAnswers = userData.progress.ch3.lusiAnswers || {};
-    userData.progress.ch3.lusiAnswers[questionId] = optIdx;
-    window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
-    this.render();
-  },
-
-  // Drag and Drop (Mouse)
   onDragStart: function(e, stickerId) {
     e.dataTransfer.setData('text/plain', stickerId);
-    e.dataTransfer.effectAllowed = 'move';
+    this.state.dndSelectedStickerId = stickerId;
     const el = document.getElementById(`sticker_${stickerId}`);
     if (el) el.classList.add('is-dragging');
   },
 
   onDragOver: function(e) {
     e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    e.currentTarget.classList.add('drag-over');
+    const zone = e.currentTarget;
+    if (zone && !zone.classList.contains('correct-match')) {
+      zone.classList.add('drag-over');
+    }
   },
 
   onDragLeave: function(e) {
-    e.currentTarget.classList.remove('drag-over');
+    const zone = e.currentTarget;
+    if (zone) zone.classList.remove('drag-over');
   },
 
-  onDrop: function(e, targetSlotId) {
+  onDrop: function(e, dropId) {
     e.preventDefault();
-    e.currentTarget.classList.remove('drag-over');
-    const stickerId = e.dataTransfer.getData('text/plain');
-    if (!stickerId) return;
+    const zone = e.currentTarget;
+    if (zone) zone.classList.remove('drag-over');
 
-    this.executePairing(stickerId, targetSlotId);
+    const stickerId = e.dataTransfer.getData('text/plain') || this.state.dndSelectedStickerId;
+    this.processDndMatch(stickerId, dropId);
   },
 
-  // Drag and Drop (Touch / Mobile Click selection)
-  selectStickerForMobilePair: function(stickerId) {
+  onStickerClick: function(stickerId) {
+    const el = document.getElementById(`sticker_${stickerId}`);
     if (this.state.dndSelectedStickerId === stickerId) {
       this.state.dndSelectedStickerId = null;
+      if (el) el.classList.remove('selected-for-drop');
     } else {
+      document.querySelectorAll('.draggable-item').forEach(d => d.classList.remove('selected-for-drop'));
       this.state.dndSelectedStickerId = stickerId;
-      this.showToast('Đã chọn sticker! Hãy chạm vào giải pháp bên phải để ghép.', 'info');
+      if (el) el.classList.add('selected-for-drop');
+      this.showToast('Đã chọn sticker! Bây giờ chạm vào Giải pháp tương ứng bên phải để ghép cặp.', 'info');
     }
-    this.render();
   },
 
-  pairWithTarget: function(targetSlotId) {
+  onDropZoneClick: function(dropId) {
     if (!this.state.dndSelectedStickerId) return;
-    const stickerId = this.state.dndSelectedStickerId;
-    this.executePairing(stickerId, targetSlotId);
+    this.processDndMatch(this.state.dndSelectedStickerId, dropId);
     this.state.dndSelectedStickerId = null;
+    document.querySelectorAll('.draggable-item').forEach(d => d.classList.remove('selected-for-drop'));
   },
 
-  executePairing: function(stickerId, targetSlotId) {
-    if (!this.state.currentUser) {
-      this.showToast('Vui lòng đăng nhập để lưu kết quả bài tập.', 'info');
-      return;
-    }
+  processDndMatch: function(stickerId, dropId) {
+    if (!this.state.currentUser) return;
+    if (!stickerId || !dropId) return;
+
+    const pairs = APP_DATA.chapters[2].dndExercise.pairs;
+    const targetPair = pairs.find(p => p.id === dropId);
+
     const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
     userData.progress.ch3.dndState = userData.progress.ch3.dndState || { pairs: {}, isCompleted: false, score: 0 };
 
-    // Remove if previously paired elsewhere
-    for (let key in userData.progress.ch3.dndState.pairs) {
-      if (userData.progress.ch3.dndState.pairs[key] === stickerId) {
-        delete userData.progress.ch3.dndState.pairs[key];
+    if (stickerId === dropId) {
+      userData.progress.ch3.dndState.pairs[dropId] = stickerId;
+      const matchedCount = Object.keys(userData.progress.ch3.dndState.pairs).length;
+      userData.progress.ch3.dndState.score = matchedCount;
+
+      if (matchedCount >= 6) {
+        userData.progress.ch3.dndState.isCompleted = true;
+        userData.progress.ch3.completed = true;
+        window.SERVICES.Streak.recordActivity(this.state.currentUser.id, "Hoàn thành Bài Tập Kéo Thả Chuyển Hóa");
+        this.showToast("🎉 Xuất sắc! Bạn đã ghép đúng toàn bộ 6 cặp chuyển hóa cảm xúc!", "success");
+      } else {
+        this.showToast(`✓ Chính xác! ${targetPair.explanation}`, "success");
       }
-    }
 
-    userData.progress.ch3.dndState.pairs[targetSlotId] = stickerId;
-    userData.progress.ch3.dndState.isCompleted = false; // Reset verification state until user clicks Check
-    window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
-
-    this.render();
-  },
-
-  unpairSlot: function(targetSlotId) {
-    if (!this.state.currentUser) return;
-    const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
-    if (!userData.progress.ch3.dndState?.pairs) return;
-
-    delete userData.progress.ch3.dndState.pairs[targetSlotId];
-    userData.progress.ch3.dndState.isCompleted = false;
-    window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
-    this.render();
-  },
-
-  checkDnDPairs: function() {
-    if (!this.state.currentUser) {
-      this.showToast('Vui lòng đăng nhập để lưu tiến độ.', 'info');
-      return;
-    }
-    const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
-    const dndState = userData.progress.ch3.dndState || { pairs: {} };
-    const pairs = dndState.pairs || {};
-
-    const totalSlots = window.APP_DATA.chapters[2].dndExercise.pairs.length;
-    let score = 0;
-
-    for (let slotId in pairs) {
-      if (pairs[slotId] === slotId) {
-        score++;
-      }
-    }
-
-    dndState.isCompleted = true;
-    dndState.score = score;
-    userData.progress.ch3.dndState = dndState;
-    userData.progress.ch3.completed = (score >= 4);
-    window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
-
-    if (score >= 4) {
-      window.SERVICES.Streak.recordActivity(this.state.currentUser.id, "Hoàn thành Bài tập Kéo thả Chuyển hóa");
-      this.showToast(`Chúc mừng! Bạn đã ghép đúng ${score}/${totalSlots} cặp!`, 'success');
+      window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
+      this.render();
     } else {
-      this.showToast(`Bạn ghép đúng ${score}/${totalSlots} cặp. Hãy xem lại những chỗ báo đỏ nhé!`, 'warning');
+      const zone = document.getElementById(`dropzone_${dropId}`);
+      if (zone) {
+        zone.classList.add('incorrect-match');
+        setTimeout(() => zone.classList.remove('incorrect-match'), 600);
+      }
+      this.showToast("Chưa chính xác, bạn hãy đọc kỹ lại giải pháp và thử lại nhé!", "warning");
     }
-
-    this.render();
   },
 
-  resetDnD: function() {
+  handleLusiAnswer: function(qId, val) {
     if (!this.state.currentUser) return;
     const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
-    userData.progress.ch3.dndState = { pairs: {}, isCompleted: false, score: 0 };
+    userData.progress.ch3.lusiAnswers = userData.progress.ch3.lusiAnswers || {};
+    userData.progress.ch3.lusiAnswers[qId] = val;
     window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
-    this.showToast('Đã đặt lại bài tập kéo thả.', 'info');
-    this.render();
+    this.showToast('Đã ghi nhận câu trả lời tình huống Lusi.', 'info');
   },
 
-  // Pomodoro
   togglePomodoro: function() {
     const btn = document.getElementById('pomoStartBtn');
     if (this.state.pomodoro.isRunning) {
       clearInterval(this.state.pomodoro.timer);
       this.state.pomodoro.isRunning = false;
       if (btn) btn.innerText = 'Tiếp tục';
-      this.showToast('Đã tạm dừng Pomodoro.', 'info');
     } else {
       this.state.pomodoro.isRunning = true;
       if (btn) btn.innerText = 'Tạm dừng';
-      this.showToast('Bắt đầu phiên Pomodoro tập trung 25 phút!', 'success');
-
       this.state.pomodoro.timer = setInterval(() => {
         this.state.pomodoro.timeLeft--;
         this.updatePomodoroDisplay();
@@ -448,16 +495,17 @@ window.APP = {
         if (this.state.pomodoro.timeLeft <= 0) {
           clearInterval(this.state.pomodoro.timer);
           this.state.pomodoro.isRunning = false;
+          this.state.pomodoro.sessionsCompleted++;
           this.state.pomodoro.timeLeft = 25 * 60;
 
           if (this.state.currentUser) {
             const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
             userData.progress.ch3.pomodoroSessions = (userData.progress.ch3.pomodoroSessions || 0) + 1;
             window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
-            window.SERVICES.Streak.recordActivity(this.state.currentUser.id, "Hoàn thành 1 phiên Pomodoro");
+            window.SERVICES.Streak.recordActivity(this.state.currentUser.id, "Hoàn thành 1 Phiên Pomodoro 25p");
           }
 
-          this.showToast('🎉 Tuyệt vời! Bạn đã hoàn thành 1 phiên Pomodoro tập trung!', 'success');
+          this.showToast('🍅 Chúc mừng! Bạn đã hoàn thành 1 phiên Pomodoro tập trung 25 phút!', 'success');
           this.updatePomodoroDisplay();
         }
       }, 1000);
@@ -471,7 +519,6 @@ window.APP = {
     const btn = document.getElementById('pomoStartBtn');
     if (btn) btn.innerText = 'Bắt đầu (25p)';
     this.updatePomodoroDisplay();
-    this.showToast('Đã đặt lại đồng hồ Pomodoro.', 'info');
   },
 
   updatePomodoroDisplay: function() {
@@ -482,18 +529,11 @@ window.APP = {
     const disp = document.getElementById('pomoDisplay');
     const count = document.getElementById('pomoSessionCount');
     if (disp) disp.innerText = timeStr;
-    if (count && this.state.currentUser) {
-      const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
-      count.innerText = `Đã xong: ${userData.progress?.ch3?.pomodoroSessions || 0} phiên`;
-    }
+    if (count) count.innerText = `Đã xong: ${this.state.pomodoro.sessionsCompleted} phiên`;
   },
 
-  // 24-Hour Energy Map
   cycleEnergySlot: function(hour) {
-    if (!this.state.currentUser) {
-      this.showToast('Vui lòng đăng nhập để lưu bản đồ năng lượng.', 'info');
-      return;
-    }
+    if (!this.state.currentUser) return;
     const colors = ['green', 'yellow', 'red'];
     const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
     userData.progress.ch3.energyMap = userData.progress.ch3.energyMap || {};
@@ -505,63 +545,63 @@ window.APP = {
     userData.progress.ch3.energyMap[hour] = nextColor;
     window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
 
-    this.render();
+    const slot = document.getElementById(`slot_${hour}`);
+    if (slot) {
+      slot.className = `energy-slot p-2.5 rounded-xl border text-center font-bold text-xs transition-all shadow-sm ${
+        nextColor === 'green' ? 'bg-emerald-500 text-white border-emerald-600' :
+        nextColor === 'yellow' ? 'bg-amber-500 text-white border-amber-600' :
+        'bg-rose-500 text-white border-rose-600'
+      }`;
+    }
   },
 
   // =========================================================================
-  // 7. CHAPTER 4 HANDLERS (Video, 11-Day Challenge, Value Flower)
+  // 9. CHAPTER 4 HANDLERS (Video, 11-Day Challenge, Value Flower & Future Letter)
   // =========================================================================
-  onVideoTimeUpdate: function(videoEl) {
-    if (!videoEl || !videoEl.duration) return;
-    if (videoEl.currentTime / videoEl.duration >= 0.8) {
-      this.markVideoComplete();
+  onVideoTimeUpdate: function(video) {
+    if (!this.state.currentUser || !video.duration) return;
+    const percent = Math.round((video.currentTime / video.duration) * 100);
+    if (percent > 80) {
+      const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
+      if (!userData.progress.ch4.videoCompleted) {
+        userData.progress.ch4.videoCompleted = true;
+        window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
+        window.SERVICES.Streak.recordActivity(this.state.currentUser.id, "Xem Video Hướng Dẫn Tái Tạo Năng Lượng");
+        this.showToast("✓ Đã hoàn thành xem video bài học thiền thở!", "success");
+      }
     }
   },
 
   onVideoEnded: function() {
-    this.markVideoComplete();
-  },
-
-  handleVideoError: function(videoEl) {
-    const fallback = document.getElementById('videoErrorFallback');
-    if (fallback) fallback.classList.remove('hidden');
-  },
-
-  markVideoComplete: function() {
     if (!this.state.currentUser) return;
     const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
-    if (!userData.progress.ch4.videoCompleted) {
-      userData.progress.ch4.videoCompleted = true;
-      window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
-      window.SERVICES.Streak.recordActivity(this.state.currentUser.id, "Xem Video Thiền thở & Phục hồi");
-      this.showToast('✓ Bạn đã hoàn thành Video bài học Chương 4!', 'success');
-    }
-  },
-
-  markVideoCompleteManual: function() {
-    this.markVideoComplete();
+    userData.progress.ch4.videoCompleted = true;
+    window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
+    window.SERVICES.Streak.recordActivity(this.state.currentUser.id, "Hoàn thành Video Tái Tạo Năng Lượng");
     this.render();
   },
 
+  handleVideoError: function(video) {
+    console.warn("Video stream load fallback activated.");
+  },
+
   toggleChallengeDay: function(dayNum) {
-    if (!this.state.currentUser) {
-      this.showToast('Vui lòng đăng nhập để lưu tiến độ thử thách 11 ngày.', 'info');
-      return;
-    }
+    if (!this.state.currentUser) return;
     const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
     userData.progress.ch4.challenge11Days = userData.progress.ch4.challenge11Days || {};
 
-    const curr = userData.progress.ch4.challenge11Days[dayNum] || { completed: false, note: '' };
-    curr.completed = !curr.completed;
-    userData.progress.ch4.challenge11Days[dayNum] = curr;
+    if (!userData.progress.ch4.challenge11Days[dayNum]) {
+      userData.progress.ch4.challenge11Days[dayNum] = { completed: false, note: '' };
+    }
+    userData.progress.ch4.challenge11Days[dayNum].completed = !userData.progress.ch4.challenge11Days[dayNum].completed;
 
-    window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
-
-    if (curr.completed) {
-      window.SERVICES.Streak.recordActivity(this.state.currentUser.id, `Hoàn thành Thử thách Ngày ${dayNum}`);
-      this.showToast(`🔥 Đã hoàn thành Ngày ${dayNum}! Ngọn lửa kiên cường đang lớn dần!`, 'success');
+    const doneCount = Object.values(userData.progress.ch4.challenge11Days).filter(c => c.completed).length;
+    if (userData.progress.ch4.challenge11Days[dayNum].completed) {
+      window.SERVICES.Streak.recordActivity(this.state.currentUser.id, `Hoàn thành Ngày ${dayNum} trong Thử Thách 11 Ngày`);
+      this.showToast(`✓ Đã hoàn thành nhiệm vụ Ngày ${dayNum}! (${doneCount}/11 Ngày)`, 'success');
     }
 
+    window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
     this.render();
   },
 
@@ -570,39 +610,36 @@ window.APP = {
     const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
     userData.progress.ch4.challenge11Days = userData.progress.ch4.challenge11Days || {};
 
-    const curr = userData.progress.ch4.challenge11Days[dayNum] || { completed: false, note: '' };
-    curr.note = text;
-    userData.progress.ch4.challenge11Days[dayNum] = curr;
-
+    if (!userData.progress.ch4.challenge11Days[dayNum]) {
+      userData.progress.ch4.challenge11Days[dayNum] = { completed: false, note: '' };
+    }
+    userData.progress.ch4.challenge11Days[dayNum].note = text;
     window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
   },
 
-  saveValueFlowerPetal: function(petalIndex, text) {
+  saveValueFlowerPetal: function(idx, val) {
     if (!this.state.currentUser) return;
     const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
     userData.progress.ch4.valueFlower = userData.progress.ch4.valueFlower || {};
-    userData.progress.ch4.valueFlower[petalIndex] = text;
+    userData.progress.ch4.valueFlower[idx] = val;
     window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
+    this.showToast(`Đã lưu Cánh hoa giá trị ${idx}: ${val}`, 'info');
   },
 
-  // =========================================================================
-  // 8. FUTURE LETTER HANDLERS (Pink / Green Theme)
-  // =========================================================================
   handleCreateFutureLetter: function(e) {
     e.preventDefault();
-    if (!this.state.currentUser) {
-      this.showToast('Vui lòng đăng nhập để gửi thư.', 'warning');
-      return;
-    }
+    if (!this.state.currentUser) return;
 
     const recipient = document.getElementById('letRecipient')?.value;
     const unlockDate = document.getElementById('letUnlockDate')?.value;
+    const targetEmail = document.getElementById('letTargetEmail')?.value;
     const content = document.getElementById('letContent')?.value;
     const signature = document.getElementById('letSignature')?.value;
 
     const res = window.SERVICES.FutureLetter.createLetter(this.state.currentUser.id, {
       recipient,
       unlockDate,
+      targetEmail,
       content,
       signature
     });
@@ -610,239 +647,254 @@ window.APP = {
     if (res.success) {
       this.showToast(res.message, 'success');
       this.render();
+      this.scrollToDay11();
     } else {
       this.showToast(res.message, 'warning');
-    }
-  },
-
-  openLetterModal: function(letterId) {
-    if (!this.state.currentUser) return;
-    const res = window.SERVICES.FutureLetter.openLetter(this.state.currentUser.id, letterId, false);
-    if (res.success) {
-      this.openModal(COMPONENTS.renderLetterViewModal(res.letter));
-      this.render();
-    } else {
-      this.showToast(res.message, 'warning');
-    }
-  },
-
-  testUnlockLetter: function(letterId) {
-    if (!this.state.currentUser) return;
-    const res = window.SERVICES.FutureLetter.openLetter(this.state.currentUser.id, letterId, true);
-    if (res.success) {
-      this.showToast('✨ Mở khóa thử nghiệm (QA Fast-Forward) thành công!', 'success');
-      this.openModal(COMPONENTS.renderLetterViewModal(res.letter));
-      this.render();
     }
   },
 
   // =========================================================================
-  // 9. FAVORITES HANDLERS
+  // 10. FAVORITES & MODAL HANDLERS
   // =========================================================================
   toggleFavorite: function(item) {
-    if (!this.state.currentUser) {
-      this.showToast('Vui lòng đăng nhập để lưu mục yêu thích.', 'info');
-      return;
-    }
-    const res = window.SERVICES.Favorites.toggleFavorite(this.state.currentUser.id, item);
-    this.showToast(res.message, 'info');
-    this.render();
-  },
-
-  removeFavorite: function(favId) {
     if (!this.state.currentUser) return;
-    const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
-    userData.favorites = (userData.favorites || []).filter(f => f.id !== favId);
-    window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
-    this.showToast('Đã xóa khỏi danh sách Yêu thích.', 'info');
+    const res = window.SERVICES.Favorites.toggleFavorite(this.state.currentUser.id, item);
+    this.showToast(res.message, res.isFav ? 'success' : 'info');
     this.render();
-  },
-
-  // =========================================================================
-  // 10. MODALS, SEARCH & NOTIFICATION CENTER
-  // =========================================================================
-  openModal: function(contentHtml) {
-    const container = document.getElementById('modalContainer');
-    if (container) {
-      container.innerHTML = contentHtml;
-      container.classList.remove('hidden');
-      document.body.classList.add('overflow-hidden');
-    }
-  },
-
-  closeModal: function() {
-    const container = document.getElementById('modalContainer');
-    if (container) {
-      container.classList.add('hidden');
-      container.innerHTML = '';
-      document.body.classList.remove('overflow-hidden');
-    }
   },
 
   openStreakModal: function() {
-    if (!this.state.currentUser) {
-      this.navigateTo('login');
-      return;
-    }
-    const streakInfo = window.SERVICES.Streak.getStreakInfo(this.state.currentUser.id);
-    this.openModal(COMPONENTS.renderStreakModal(streakInfo));
-  },
+    if (!this.state.currentUser) return;
+    const info = window.SERVICES.Streak.getStreakInfo(this.state.currentUser.id);
+    const modal = document.getElementById('modalContainer');
+    if (!modal) return;
 
-  openSearchModal: function() {
-    const results = window.SERVICES.Search.search(this.state.searchQuery || '');
-    this.openModal(COMPONENTS.renderSearchModal(this.state.searchQuery, results));
-    setTimeout(() => {
-      document.getElementById('globalSearchInput')?.focus();
-    }, 50);
-  },
-
-  handleSearchInput: function(query) {
-    this.state.searchQuery = query;
-    const results = window.SERVICES.Search.search(query);
-    const container = document.getElementById('modalContainer');
-    if (container) {
-      container.innerHTML = COMPONENTS.renderSearchModal(query, results);
-      const input = document.getElementById('globalSearchInput');
-      if (input) {
-        input.focus();
-        input.selectionStart = input.selectionEnd = input.value.length;
-      }
-    }
-  },
-
-  navigateToSearchResult: function(chapterId) {
-    this.closeModal();
-    this.navigateTo(chapterId);
+    modal.innerHTML = `
+      <div class="glass-modal rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-orange-200 text-center space-y-4">
+        <div class="w-16 h-16 rounded-full bg-orange-100 text-orange-500 text-3xl flex items-center justify-center mx-auto shadow-md">
+          <i class="fas fa-fire"></i>
+        </div>
+        <h3 class="text-xl font-bold text-slate-900 font-serif-title">Chuỗi Streak Của Bạn</h3>
+        <div class="text-4xl font-extrabold text-orange-600 font-serif-title">${info.count} Ngày Liên Tiếp</div>
+        <p class="text-xs text-slate-600 leading-relaxed">
+          ${info.activeToday ? '🔥 Bạn đã hoàn thành hoạt động hôm nay và duy trì ngọn lửa kiên cường!' : '⚠️ Bạn chưa ghi nhận hoạt động nào hôm nay. Hãy làm một bài test, đọc bài học hoặc viết thư để duy trì streak nhé!'}
+        </p>
+        <button onclick="APP.closeModal()" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-2.5 rounded-xl text-xs shadow-md">
+          Đóng
+        </button>
+      </div>
+    `;
+    modal.classList.remove('hidden');
   },
 
   openNotificationModal: function() {
-    if (!this.state.currentUser) {
-      this.navigateTo('login');
-      return;
-    }
-    const activeTab = this.state.notifActiveTab || 'notifs';
+    if (!this.state.currentUser) return;
     const notifs = window.SERVICES.EmailNotification.getNotifications(this.state.currentUser.id);
     const emailLogs = window.SERVICES.EmailNotification.getEmailLogs(this.state.currentUser.id);
-    this.openModal(COMPONENTS.renderNotificationModal(this.state.currentUser, notifs, emailLogs, activeTab));
+    const modal = document.getElementById('modalContainer');
+    if (!modal) return;
+
+    modal.innerHTML = `
+      <div class="glass-modal rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-emerald-200 space-y-4 max-h-[85vh] overflow-y-auto">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div class="flex items-center space-x-2">
+            <i class="fas fa-inbox text-emerald-600 text-lg"></i>
+            <h3 class="text-base font-bold text-slate-900">Hộp Thư & Thông Báo Email</h3>
+          </div>
+          <button onclick="APP.closeModal()" class="text-slate-400 hover:text-slate-600 text-sm">×</button>
+        </div>
+
+        <div class="space-y-3">
+          ${emailLogs.length === 0 ? `
+            <div class="text-center py-6 text-xs text-slate-400">Chưa có thông báo nào trong hộp thư.</div>
+          ` : emailLogs.map(em => `
+            <div class="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-1">
+              <div class="flex justify-between items-center text-[10px] text-slate-500">
+                <span>Tới: <strong>${em.toEmail}</strong></span>
+                <span>${em.sentAt}</span>
+              </div>
+              <div class="text-xs font-bold text-slate-900">${em.title || em.subject}</div>
+              <p class="text-[11px] text-slate-600 leading-relaxed">${em.body}</p>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+    modal.classList.remove('hidden');
   },
 
-  switchNotifTab: function(tabName) {
-    this.state.notifActiveTab = tabName;
-    this.openNotificationModal();
-  },
-
-  markAllNotifsRead: function() {
+  previewLetterModal: function(letterId) {
     if (!this.state.currentUser) return;
-    window.SERVICES.EmailNotification.markAllAsRead(this.state.currentUser.id);
-    this.openNotificationModal();
-    this.render();
+    const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
+    const letter = (userData.futureLetters || []).find(l => l.id === letterId);
+    if (!letter) return;
+
+    const modal = document.getElementById('modalContainer');
+    if (!modal) return;
+
+    const status = window.SERVICES.FutureLetter.checkLetterStatus(letter);
+
+    modal.innerHTML = `
+      <div class="future-letter-envelope rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border-2 border-pink-300 space-y-4">
+        <div class="flex items-center justify-between pb-2 border-b border-pink-200">
+          <span class="text-xs font-bold text-pink-800 uppercase">Phong Bì Niêm Phong Sáp</span>
+          <button onclick="APP.closeModal()" class="text-slate-400 hover:text-slate-600 text-sm">×</button>
+        </div>
+
+        <div class="text-center space-y-2 py-3">
+          <div class="wax-seal mx-auto"><i class="fas fa-stamp"></i></div>
+          <h3 class="text-base font-bold text-slate-900 font-serif-title">${letter.recipient}</h3>
+          <div class="text-xs text-pink-700 font-semibold">${status.label}</div>
+          <div class="text-[11px] text-slate-500">Email nhận: <strong>${letter.targetEmail || 'Email sinh viên'}</strong></div>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-white/90 border border-pink-200 text-xs text-slate-700 italic leading-relaxed line-clamp-4">
+          "${letter.content}"
+        </div>
+
+        <div class="flex justify-between items-center pt-2">
+          <span class="text-xs font-bold text-pink-900">With Love, ${letter.signature}</span>
+          <button onclick="APP.closeModal()" class="bg-pink-600 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-md">
+            Đóng phong bì
+          </button>
+        </div>
+      </div>
+    `;
+    modal.classList.remove('hidden');
   },
 
-  triggerTestEmail: function() {
-    if (!this.state.currentUser) return;
-    window.SERVICES.EmailNotification.sendMockEmail(this.state.currentUser.id, {
-      type: 'test',
-      subject: '💌 [Thử nghiệm] Bản tin Chăm sóc Sức khỏe Tinh thần Burn Bright',
-      title: '💌 Bản tin kiểm thử email',
-      message: 'Chúc mừng bạn! Hệ thống Email Notification đã hoạt động hoàn hảo và sẵn sàng tích hợp SMTP.'
-    });
-    this.showToast('Đã gửi email mô phỏng thành công!', 'success');
-    this.state.notifActiveTab = 'emails';
-    this.openNotificationModal();
+  openSearchModal: function() {
+    const modal = document.getElementById('modalContainer');
+    if (!modal) return;
+
+    modal.innerHTML = `
+      <div class="glass-modal rounded-3xl p-6 max-w-lg w-full shadow-2xl border border-emerald-200 space-y-4">
+        <div class="flex items-center space-x-2 pb-2 border-b border-slate-100">
+          <i class="fas fa-search text-emerald-600"></i>
+          <input type="text" id="searchInput" oninput="APP.handleSearchInput(this.value)" placeholder="Tìm kiếm bài test, tảng băng, pomodoro, thư tương lai..." 
+                 class="w-full bg-transparent text-sm font-semibold focus:outline-none text-slate-800">
+          <button onclick="APP.closeModal()" class="text-slate-400 hover:text-slate-600 text-sm">×</button>
+        </div>
+
+        <div id="searchResultsContainer" class="space-y-2 max-h-60 overflow-y-auto text-xs text-slate-500">
+          Gõ từ khóa để tìm kiếm nhanh trong toàn bộ khóa học...
+        </div>
+      </div>
+    `;
+    modal.classList.remove('hidden');
+    setTimeout(() => document.getElementById('searchInput')?.focus(), 50);
+  },
+
+  handleSearchInput: function(query) {
+    const results = window.SERVICES.Search.search(query);
+    const container = document.getElementById('searchResultsContainer');
+    if (!container) return;
+
+    if (results.length === 0) {
+      container.innerHTML = '<div class="text-slate-400 py-2">Không tìm thấy nội dung phù hợp.</div>';
+      return;
+    }
+
+    container.innerHTML = results.map(r => `
+      <div onclick="APP.navigateTo('${r.chapterId}'); APP.closeModal();" class="p-2.5 rounded-xl hover:bg-emerald-50 cursor-pointer transition-colors space-y-0.5 border border-transparent hover:border-emerald-200">
+        <div class="font-bold text-slate-800 text-xs">${r.title}</div>
+        <div class="text-[10px] text-emerald-600 font-semibold">${r.chapterTitle}</div>
+        <p class="text-[11px] text-slate-500 line-clamp-1">${r.snippet}</p>
+      </div>
+    `).join('');
+  },
+
+  closeModal: function() {
+    const modal = document.getElementById('modalContainer');
+    if (modal) modal.classList.add('hidden');
   },
 
   // =========================================================================
   // 11. TOAST NOTIFICATIONS
   // =========================================================================
   showToast: function(message, type = 'info') {
-    const toastContainer = document.getElementById('toastContainer');
-    if (!toastContainer) return;
-
+    const container = document.getElementById('toastContainer') || document.body;
     const toast = document.createElement('div');
-    const bg = type === 'success' ? 'bg-emerald-700' : type === 'warning' ? 'bg-amber-600' : 'bg-slate-900';
-    toast.className = `text-white text-xs font-bold px-4 py-3 rounded-2xl shadow-2xl ${bg} flex items-center space-x-2.5 transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto`;
-    toast.innerHTML = `
-      <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle'} text-base"></i>
-      <span>${message}</span>
-    `;
+    const bg = type === 'success' ? 'bg-emerald-700' : type === 'warning' ? 'bg-amber-600' : 'bg-slate-800';
+    toast.className = `text-white text-xs font-bold px-4 py-3 rounded-2xl shadow-2xl ${bg} flex items-center space-x-2 transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto max-w-sm`;
+    toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'warning' ? 'fa-triangle-exclamation' : 'fa-info-circle'} text-base"></i><span>${message}</span>`;
 
-    toastContainer.appendChild(toast);
+    container.appendChild(toast);
     setTimeout(() => {
       toast.classList.remove('translate-y-2', 'opacity-0');
     }, 10);
     setTimeout(() => {
-      toast.classList.add('opacity-0', 'translate-y-2');
+      toast.classList.add('opacity-0');
       setTimeout(() => toast.remove(), 300);
     }, 3200);
   },
 
   // =========================================================================
-  // 12. CENTRAL RENDER ENGINE
+  // 12. ROOT RENDER FUNCTION
   // =========================================================================
   render: function() {
     const appEl = document.getElementById('app');
     if (!appEl) return;
 
-    const user = this.state.currentUser;
-    const userProgress = user ? window.SERVICES.Auth.getUserData(user.id) : null;
-    const streakInfo = user ? window.SERVICES.Streak.getStreakInfo(user.id) : { count: 0, activeToday: false, history: [] };
-    const overallProgress = user ? window.SERVICES.Progress.getOverallProgress(user.id) : 0;
-    const unreadNotifs = (userProgress?.notifications || []).filter(n => !n.isRead).length;
-    const favsCount = (userProgress?.favorites || []).length;
+    // IF NOT LOGGED IN: ONLY RENDER THE AUTH GATE SCREEN!
+    if (!this.state.currentUser) {
+      appEl.innerHTML = COMPONENTS.renderAuthGate(this.state.authTab, this.state.authError, this.state.loginEmailDraft);
+      return;
+    }
 
-    const navHtml = COMPONENTS.renderNavbar(user, this.state.activePage, streakInfo, unreadNotifs, favsCount);
+    // IF LOGGED IN: RENDER FULL APPLICATION
+    const userId = this.state.currentUser.id;
+    const userData = window.SERVICES.Auth.getUserData(userId);
+    const streakInfo = window.SERVICES.Streak.getStreakInfo(userId);
+    const overall = window.SERVICES.Progress.getOverallProgress(userId);
+    const unreadNotifs = (userData.notifications || []).filter(n => !n.isRead).length;
+    const favsCount = (userData.favorites || []).length;
+    const audioState = window.SERVICES.Audio.getState();
+
+    const isFav = window.SERVICES.Favorites.isFavorite(userId, this.state.activePage);
+
+    const navHtml = COMPONENTS.renderNavbar(this.state.currentUser, this.state.activePage, streakInfo, unreadNotifs, favsCount, audioState);
+    const floatingAudioHtml = COMPONENTS.renderFloatingAudioWidget(audioState);
+
     let contentHtml = '';
-
     switch (this.state.activePage) {
       case 'home':
-        contentHtml = COMPONENTS.renderHomePage(user, overallProgress, streakInfo);
+        contentHtml = COMPONENTS.renderHomePage(this.state.currentUser, overall, streakInfo);
         break;
       case 'intro':
         contentHtml = COMPONENTS.renderProjectIntroPage();
         break;
-      case 'login':
-        contentHtml = COMPONENTS.renderLoginPage(this.state.authError, this.state.loginEmailDraft);
-        break;
-      case 'register':
-        contentHtml = COMPONENTS.renderRegisterPage(this.state.authError);
-        break;
       case 'ch1':
-      case 'chuong-1-nhan-dien':
-        contentHtml = COMPONENTS.renderChapter1(user, userProgress, window.SERVICES.Favorites.isFavorite(user?.id, 'ch1'), this.state.activeTestResult);
+        contentHtml = COMPONENTS.renderChapter1(this.state.currentUser, userData, isFav);
         break;
       case 'ch2':
-      case 'chuong-2-giai-ma':
-        contentHtml = COMPONENTS.renderChapter2(user, userProgress, window.SERVICES.Favorites.isFavorite(user?.id, 'ch2'));
+        contentHtml = COMPONENTS.renderChapter2(this.state.currentUser, userData, isFav);
         break;
       case 'ch3':
-      case 'chuong-3-chuyen-hoa':
-        contentHtml = COMPONENTS.renderChapter3(user, userProgress, window.SERVICES.Favorites.isFavorite(user?.id, 'ch3'), this.state.dndSelectedStickerId);
+        contentHtml = COMPONENTS.renderChapter3(this.state.currentUser, userData, isFav);
         break;
       case 'ch4':
-      case 'chuong-4-tai-tao':
-        contentHtml = COMPONENTS.renderChapter4(user, userProgress, window.SERVICES.Favorites.isFavorite(user?.id, 'ch4'));
-        break;
-      case 'future-letter':
-        contentHtml = COMPONENTS.renderFutureLetterPage(user, userProgress);
+        contentHtml = COMPONENTS.renderChapter4(this.state.currentUser, userData, isFav);
         break;
       case 'favorites':
-        contentHtml = COMPONENTS.renderFavoritesPage(user, userProgress?.favorites || []);
+        contentHtml = COMPONENTS.renderFavoritesPage(this.state.currentUser, userData.favorites || []);
         break;
       case 'dashboard':
-        contentHtml = COMPONENTS.renderDashboardPage(user, userProgress);
+        contentHtml = COMPONENTS.renderDashboardPage(this.state.currentUser, userData, streakInfo);
         break;
       default:
-        contentHtml = COMPONENTS.renderHomePage(user, overallProgress, streakInfo);
+        contentHtml = COMPONENTS.renderHomePage(this.state.currentUser, overall, streakInfo);
     }
 
     appEl.innerHTML = `
       ${navHtml}
-      <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 flex-1">
+      <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
         ${contentHtml}
       </main>
-      <footer class="border-t border-emerald-100 bg-white/70 backdrop-blur-md py-8 text-center text-xs text-slate-500 mt-16 space-y-2">
+      ${floatingAudioHtml}
+      <footer class="border-t border-emerald-100 bg-white/60 py-8 text-center text-xs text-slate-500 mt-16 space-y-2">
         <div class="font-bold text-slate-700">From Burnout to Burn Bright — Trường Đại học Ngoại ngữ, ĐHQGHN</div>
-        <div>Dự án Chăm sóc Sức khỏe Tinh thần & Phòng chống Kiệt sức Học tập Sinh viên (ULIS - VNU)</div>
+        <div>Đại học Quốc gia Hà Nội (ULIS - VNU) • Chăm sóc sức khỏe tinh thần sinh viên</div>
       </footer>
     `;
   }

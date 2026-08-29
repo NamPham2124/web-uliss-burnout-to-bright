@@ -223,7 +223,7 @@ window.SERVICES = {
   },
 
   // ==========================================
-  // 2. DAILY STREAK SERVICE (DUOLINGO STYLE)
+  // 2. DAILY STREAK SERVICE
   // ==========================================
   Streak: {
     recordActivity: function(userId, activityName) {
@@ -332,11 +332,12 @@ window.SERVICES = {
         return Math.min(100, dndDone + pomoOrEnergy);
       }
       if (chapterId === 4 || chapterId === "ch4") {
-        const videoDone = p.ch4?.videoCompleted ? 30 : 0;
+        const videoDone = p.ch4?.videoCompleted ? 20 : 0;
         const challengeDone = Object.values(p.ch4?.challenge11Days || {}).filter(c => c.completed).length;
-        const challengePercent = Math.round((challengeDone / 11) * 50);
+        const challengePercent = Math.round((challengeDone / 11) * 40);
         const flowerDone = Object.values(p.ch4?.valueFlower || {}).filter(v => v && v.trim()).length >= 3 ? 20 : 0;
-        return Math.min(100, videoDone + challengePercent + flowerDone);
+        const letterDone = (userData.futureLetters || []).length > 0 ? 20 : 0;
+        return Math.min(100, videoDone + challengePercent + flowerDone + letterDone);
       }
       return 0;
     },
@@ -401,7 +402,7 @@ window.SERVICES = {
   },
 
   // ==========================================
-  // 5. FUTURE LETTER SERVICE (PINK/GREEN THEME)
+  // 5. FUTURE LETTER SERVICE (INTEGRATED IN CH4)
   // ==========================================
   FutureLetter: {
     getLetters: function(userId) {
@@ -417,6 +418,7 @@ window.SERVICES = {
       const content = (letterData.content || "").trim();
       const signature = (letterData.signature || "").trim();
       const unlockDate = letterData.unlockDate;
+      const targetEmail = (letterData.targetEmail || "").trim();
       const mood = letterData.mood || "hopeful";
 
       if (!content || content.length < 10) {
@@ -428,31 +430,59 @@ window.SERVICES = {
 
       const todayStr = new Date().toISOString().split("T")[0];
       if (unlockDate <= todayStr) {
-        return { success: false, message: "Ngày mở thư phải là một ngày trong tương lai (sau hôm nay)." };
+        return { success: false, message: "Mốc thời gian gửi thư phải là một ngày trong tương lai (sau hôm nay)." };
       }
 
       const userData = window.SERVICES.Auth.getUserData(userId);
-      const activeUser = window.SERVICES.Auth.getActiveUser() || { name: "Bạn đọc" };
+      const activeUser = window.SERVICES.Auth.getActiveUser() || { name: "Bạn đọc", email: "sinhvien@vnu.edu.vn" };
+      const finalEmail = targetEmail || activeUser.email || "sinhvien@vnu.edu.vn";
+
       const newLetter = {
         id: "let_" + Date.now(),
         recipient: recipient,
         content: content,
         signature: signature || activeUser.name || "Chính tôi",
         unlockDate: unlockDate,
+        targetEmail: finalEmail,
         mood: mood,
         createdAt: new Date().toISOString(),
         sealed: true,
-        isOpened: false
+        isOpened: false,
+        status: "scheduled"
       };
 
       userData.futureLetters = userData.futureLetters || [];
       userData.futureLetters.unshift(newLetter);
+
+      // Auto-complete Day 11 of Challenge in Chapter 4
+      userData.progress = userData.progress || {};
+      userData.progress.ch4 = userData.progress.ch4 || {};
+      userData.progress.ch4.challenge11Days = userData.progress.ch4.challenge11Days || {};
+      userData.progress.ch4.challenge11Days[11] = {
+        completed: true,
+        note: `Đã niêm phong lá thư gửi ngày ${unlockDate} tới email: ${finalEmail}`
+      };
+
       window.SERVICES.Auth.saveUserData(userId, userData);
 
-      // Streak meaningful activity
-      window.SERVICES.Streak.recordActivity(userId, "Niêm phong Bức thư Tương lai");
+      // Add scheduled email log & notification
+      window.SERVICES.EmailNotification.sendMockEmail(userId, {
+        type: "letter_scheduled",
+        subject: `💌 [Đã lên lịch] Bức thư gửi tôi ngày ${unlockDate}`,
+        title: "💌 Đã Lên Lịch Gửi Thư Về Mail",
+        message: `Hệ thống đã niêm phong sáp và lên lịch gửi bức thư tới hòm thư ${finalEmail} vào ngày ${unlockDate}. Chúc bạn luôn giữ vững niềm tin!`,
+        ctaText: "Xem Thư Niêm Phong",
+        ctaPath: "ch4"
+      });
 
-      return { success: true, letter: newLetter, message: "💌 Bức thư đã được niêm phong trang trọng và hẹn ngày mở!" };
+      // Streak meaningful activity
+      window.SERVICES.Streak.recordActivity(userId, "Niêm phong Thư Tương Lai (Chương 4)");
+
+      return {
+        success: true,
+        letter: newLetter,
+        message: `💌 Bức thư đã được niêm phong thành công! Hệ thống sẽ gửi về email ${finalEmail} vào ngày ${unlockDate}.`
+      };
     },
 
     checkLetterStatus: function(letter) {
@@ -464,7 +494,6 @@ window.SERVICES = {
         return {
           isLocked: false,
           daysLeft: 0,
-          hoursLeft: 0,
           label: "Đã đến ngày mở thư!"
         };
       }
@@ -473,7 +502,7 @@ window.SERVICES = {
       return {
         isLocked: true,
         daysLeft: daysLeft,
-        label: `Còn ${daysLeft} ngày nữa đến thời khắc mở thư (${letter.unlockDate})`
+        label: `Còn ${daysLeft} ngày nữa (${letter.unlockDate}) - Sẽ gửi tới ${letter.targetEmail || 'Email của bạn'}`
       };
     },
 
@@ -496,7 +525,7 @@ window.SERVICES = {
   },
 
   // ==========================================
-  // 6. EMAIL NOTIFICATION SERVICE (ABSTRACTION)
+  // 6. EMAIL NOTIFICATION SERVICE
   // ==========================================
   EmailNotification: {
     getNotifications: function(userId) {
@@ -548,7 +577,7 @@ window.SERVICES = {
 
       const emailLogItem = {
         id: emailLogId,
-        toEmail: activeUser.email,
+        toEmail: options.toEmail || activeUser.email,
         toName: activeUser.name,
         subject: options.subject || options.title,
         title: options.title || options.subject,
@@ -595,38 +624,216 @@ window.SERVICES = {
         if (letter.unlockDate <= today && !letter.isOpened && !userData.sentEmailCooldowns[letterKey]) {
           this.sendMockEmail(userId, {
             type: "letter",
+            toEmail: letter.targetEmail,
             subject: "💌 Lá thư từ quá khứ của bạn đã đến ngày mở!",
             title: "💌 Bức Thư Tương Lai Đã Sẵn Sàng",
-            message: `Bức thư bạn gửi gắm vào ngày ${new Date(letter.createdAt).toLocaleDateString("vi-VN")} đã đến thời khắc mở niêm phong. Hãy vào đọc những lời nhắn gửi chân thành từ chính mình!`,
-            ctaText: "Mở Thư Ngay",
-            ctaPath: "future-letter"
+            message: `Bức thư bạn gửi gắm vào ngày ${new Date(letter.createdAt).toLocaleDateString("vi-VN")} đã đến thời khắc mở niêm phong (${letter.unlockDate}). Hãy mở đọc những lời nhắn gửi chân thành từ chính mình!`,
+            ctaText: "Xem Thư Ngay",
+            ctaPath: "ch4"
           });
           userData.sentEmailCooldowns[letterKey] = Date.now();
         }
       });
-
-      // 3. Inactivity Reminder
-      const overall = window.SERVICES.Progress.getOverallProgress(userId);
-      const inactKey = "inact_" + today;
-      if (overall > 0 && overall < 100 && !userData.sentEmailCooldowns[inactKey]) {
-        const last = userData.progress?.lastActiveActivity;
-        this.sendMockEmail(userId, {
-          type: "inactivity",
-          subject: "🌱 Bạn chưa hoàn thành phần đang làm dở tại Burn Bright",
-          title: "🌱 Tiếp tục hành trình của bạn",
-          message: `Bạn đang dừng chân tại: "${last?.title || 'Bài học'}". Hãy tiếp tục sạc lại năng lượng cùng ULIS nhé!`,
-          ctaText: "Tiếp tục học",
-          ctaPath: last?.path || "ch1"
-        });
-        userData.sentEmailCooldowns[inactKey] = Date.now();
-      }
 
       window.SERVICES.Auth.saveUserData(userId, userData);
     }
   },
 
   // ==========================================
-  // 7. SEARCH SERVICE
+  // 7. GENTLE AMBIENT BACKGROUND MUSIC SERVICE
+  // ==========================================
+  Audio: {
+    ctx: null,
+    isPlaying: false,
+    currentTrack: "healing_piano",
+    volume: 0.35,
+    masterGain: null,
+    synthInterval: null,
+    noiseNode: null,
+
+    tracks: {
+      healing_piano: {
+        id: "healing_piano",
+        name: "Giai điệu Chữa Lành & Piano Dịu Êm",
+        icon: "fa-music",
+        desc: "Hòa âm êm ái xoa dịu mỏi mệt não bộ"
+      },
+      solfeggio_432: {
+        id: "solfeggio_432",
+        name: "Tần số Solfeggio 432Hz Thiền Định",
+        icon: "fa-spa",
+        desc: "Tần số rung động tái tạo năng lượng tích cực"
+      },
+      zen_nature: {
+        id: "zen_nature",
+        name: "Tiếng Suối Nguồn & Không Gian Xanh",
+        icon: "fa-leaf",
+        desc: "Âm thanh tự nhiên giúp tăng khả năng tập trung"
+      }
+    },
+
+    init: function() {
+      try {
+        const savedTrack = localStorage.getItem("bb_audio_track");
+        if (savedTrack && this.tracks[savedTrack]) this.currentTrack = savedTrack;
+        const savedVol = localStorage.getItem("bb_audio_volume");
+        if (savedVol !== null) this.volume = parseFloat(savedVol);
+      } catch (e) {
+        console.error("Audio init error", e);
+      }
+    },
+
+    ensureContext: function() {
+      if (!this.ctx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        this.ctx = new AudioContextClass();
+        this.masterGain = this.ctx.createGain();
+        this.masterGain.gain.setValueAtTime(this.volume, this.ctx.currentTime);
+        this.masterGain.connect(this.ctx.destination);
+      }
+      if (this.ctx.state === "suspended") {
+        this.ctx.resume();
+      }
+    },
+
+    playChordNote: function(freq, time, duration = 3.5, type = "sine") {
+      if (!this.ctx || !this.isPlaying) return;
+      try {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, time);
+
+        // Gentle envelope
+        gain.gain.setValueAtTime(0.001, time);
+        gain.gain.exponentialRampToValueAtTime(0.12, time + 0.4);
+        gain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+
+        osc.connect(gain);
+        gain.connect(this.masterGain);
+
+        osc.start(time);
+        osc.stop(time + duration);
+      } catch (e) {
+        console.error("Note play error", e);
+      }
+    },
+
+    startSynthLoop: function() {
+      this.stopSynthLoop();
+      this.ensureContext();
+
+      if (this.currentTrack === "solfeggio_432") {
+        // Continuous 432Hz Drone with gentle 528Hz harmonics
+        const playDrone = () => {
+          if (!this.isPlaying || !this.ctx) return;
+          const now = this.ctx.currentTime;
+          this.playChordNote(432, now, 6.0, "sine");
+          this.playChordNote(216, now, 6.0, "triangle");
+          this.playChordNote(528, now + 1.0, 5.0, "sine");
+        };
+        playDrone();
+        this.synthInterval = setInterval(playDrone, 5500);
+      } else if (this.currentTrack === "zen_nature") {
+        // Pentatonic peaceful chords mimicking nature windchimes
+        const scale = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25];
+        const playChime = () => {
+          if (!this.isPlaying || !this.ctx) return;
+          const now = this.ctx.currentTime;
+          const note1 = scale[Math.floor(Math.random() * scale.length)];
+          const note2 = scale[Math.floor(Math.random() * scale.length)];
+          this.playChordNote(note1, now, 4.0, "triangle");
+          this.playChordNote(note2, now + 0.6, 4.0, "sine");
+        };
+        playChime();
+        this.synthInterval = setInterval(playChime, 2800);
+      } else {
+        // Default: Healing Piano (Warm gentle chord progressions: Cmaj7 -> Fmaj7 -> G -> Am7)
+        const progressions = [
+          [261.63, 329.63, 392.00, 493.88], // Cmaj7
+          [174.61, 220.00, 261.63, 329.63], // Fmaj7
+          [196.00, 246.94, 293.66, 349.23], // G7
+          [220.00, 261.63, 329.63, 392.00]  // Am7
+        ];
+        let progIdx = 0;
+        const playProg = () => {
+          if (!this.isPlaying || !this.ctx) return;
+          const now = this.ctx.currentTime;
+          const chord = progressions[progIdx % progressions.length];
+          progIdx++;
+          chord.forEach((freq, idx) => {
+            this.playChordNote(freq, now + idx * 0.35, 4.5, "sine");
+            this.playChordNote(freq * 0.5, now + idx * 0.35, 4.5, "triangle");
+          });
+        };
+        playProg();
+        this.synthInterval = setInterval(playProg, 4000);
+      }
+    },
+
+    stopSynthLoop: function() {
+      if (this.synthInterval) {
+        clearInterval(this.synthInterval);
+        this.synthInterval = null;
+      }
+    },
+
+    play: function(trackKey) {
+      if (trackKey && this.tracks[trackKey]) {
+        this.currentTrack = trackKey;
+        try { localStorage.setItem("bb_audio_track", trackKey); } catch (e) {}
+      }
+      this.ensureContext();
+      this.isPlaying = true;
+      this.startSynthLoop();
+      return true;
+    },
+
+    pause: function() {
+      this.isPlaying = false;
+      this.stopSynthLoop();
+    },
+
+    toggle: function() {
+      if (this.isPlaying) {
+        this.pause();
+      } else {
+        this.play();
+      }
+      return this.isPlaying;
+    },
+
+    setVolume: function(val) {
+      this.volume = Math.max(0, Math.min(1, parseFloat(val)));
+      if (this.masterGain && this.ctx) {
+        this.masterGain.gain.setValueAtTime(this.volume, this.ctx.currentTime);
+      }
+      try { localStorage.setItem("bb_audio_volume", this.volume.toString()); } catch (e) {}
+    },
+
+    setTrack: function(trackKey) {
+      if (this.tracks[trackKey]) {
+        this.currentTrack = trackKey;
+        try { localStorage.setItem("bb_audio_track", trackKey); } catch (e) {}
+        if (this.isPlaying) {
+          this.startSynthLoop();
+        }
+      }
+    },
+
+    getState: function() {
+      return {
+        isPlaying: this.isPlaying,
+        currentTrack: this.currentTrack,
+        trackInfo: this.tracks[this.currentTrack] || this.tracks.healing_piano,
+        volume: this.volume
+      };
+    }
+  },
+
+  // ==========================================
+  // 8. SEARCH SERVICE
   // ==========================================
   Search: {
     search: function(query) {
@@ -643,3 +850,6 @@ window.SERVICES = {
     }
   }
 };
+
+// Initialize audio service preferences
+window.SERVICES.Audio.init();

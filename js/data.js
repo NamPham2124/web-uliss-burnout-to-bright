@@ -267,7 +267,7 @@ window.APP_DATA = {
       slug: "ch4",
       navLabel: "C4: Tái tạo",
       title: "Chương 4: Tái tạo",
-      subtitle: "Video Hồi phục, Thử thách 11 Ngày & Bức thư Tương lai",
+      subtitle: "Video Hồi phục, Thử thách 11 Ngày & Bức thư Tương lai (To Me In The Future)",
       icon: "fa-seedling",
       badge: "Phục hồi",
       color: "from-teal-500 to-emerald-600",
@@ -355,12 +355,22 @@ window.APP_DATA = {
           {
             day: 11,
             phase: "Chặng 4: Tái tạo hoàn toàn",
-            title: "Ngày 11: Thử thách Du hành thời gian",
-            task: "Viết một bức thư gửi cho chính mình trong tương lai (To Me In The Future).",
+            title: "Ngày 11: Thử thách Du hành thời gian (TO ME IN THE FUTURE)",
+            task: "Viết một bức thư gửi cho chính mình trong tương lai, niêm phong và lên lịch tự động gửi về email.",
             inputPrompt: "Thông điệp gửi tương lai:",
             placeholder: "Cậu đã làm rất kiên cường rồi, hãy tiếp tục tỏa sáng nhé..."
           }
         ],
+        futureLetterPrompt: {
+          title: "Ngày 11: Thử thách du hành thời gian — TO ME IN THE FUTURE",
+          subtitle: "Hãy cùng nhau viết một bức thư gửi tới bạn trong tương lai nhé! Mở nó ra và chậm rãi cảm nhận khi bạn dần kiệt sức, mất niềm tin vào bản thân, hay cảm thấy mình đang chững lại... và khám phá được bản thân bạn đã từng kiên cường nhường nào.",
+          questions: [
+            "Ở hiện tại, cậu đang phải đối mặt với những áp lực gì?",
+            "Cậu đã cố gắng như thế nào để đi qua khoảng thời gian khó khăn này?",
+            "Hành trình đồng hành cùng “From Burnout to Burn Bright” đã mang lại cho cậu những trải nghiệm như thế nào?",
+            "Nếu có thể gửi một lời nhắn đến bản thân trong tương lai, cậu sẽ nói gì?"
+          ]
+        },
         valueFlower: {
           title: "Bài tập: Bông Hoa Giá Trị Bản Thân",
           desc: "Nhập 5 giá trị / điểm mạnh tích cực của chính bạn để làm nở rộ bông hoa tự hào của sinh viên ULIS!"
@@ -444,11 +454,11 @@ window.APP_DATA = {
     },
     {
       id: "s10",
-      title: "Bức Thư Gửi Tôi Trong Tương Lai",
-      chapterId: "future-letter",
-      chapterTitle: "Future Letter",
-      snippet: "Viết thư niêm phong, cài đặt ngày hẹn mở khóa trong tương lai và nhận email thông báo.",
-      keywords: ["thu tuong lai", "future letter", "niem phong", "khoa thu", "gui toi", "mo thu", "la thu"]
+      title: "Bức Thư Gửi Tôi Trong Tương Lai (TO ME IN THE FUTURE)",
+      chapterId: "ch4",
+      chapterTitle: "Chương 4: Tái tạo (Ngày 11)",
+      snippet: "Viết thư niêm phong sáp, cài đặt ngày hẹn mở khóa trong tương lai và nhận email thông báo tự động.",
+      keywords: ["thu tuong lai", "future letter", "to me in the future", "niem phong", "khoa thu", "gui toi", "mo thu", "la thu", "email"]
     }
   ]
 };
