@@ -871,9 +871,13 @@ window.APP = {
   },
 
   // =========================================================================
-  // 11. DATABASE & REGISTERED USERS MANAGEMENT
+  // 11. DATABASE & REGISTERED USERS MANAGEMENT (ADMIN ONLY)
   // =========================================================================
   openDatabaseModal: function(tab = 'accounts') {
+    if (!this.state.currentUser || !window.SERVICES.Auth.isAdmin(this.state.currentUser)) {
+      this.showToast('Khu vực này chỉ dành riêng cho tài khoản Quản trị viên (Admin)!', 'warning');
+      return;
+    }
     const modal = document.getElementById('modalContainer');
     if (!modal) return;
 
@@ -885,10 +889,12 @@ window.APP = {
   },
 
   switchDatabaseTab: function(tab) {
+    if (!this.state.currentUser || !window.SERVICES.Auth.isAdmin(this.state.currentUser)) return;
     this.openDatabaseModal(tab);
   },
 
   viewUserDetails: function(userId) {
+    if (!this.state.currentUser || !window.SERVICES.Auth.isAdmin(this.state.currentUser)) return;
     const modal = document.getElementById('modalContainer');
     if (!modal) return;
 
@@ -900,7 +906,33 @@ window.APP = {
     modal.innerHTML = COMPONENTS.renderUserDetailsModal(user, udata);
   },
 
+  toggleUserAdminRole: function(userId) {
+    if (!this.state.currentUser || !window.SERVICES.Auth.isAdmin(this.state.currentUser)) {
+      this.showToast('Chỉ Quản trị viên mới có quyền điều chỉnh vai trò tài khoản!', 'danger');
+      return;
+    }
+    const users = window.SERVICES.Auth.getUsers();
+    const targetUser = users.find(u => u.id === userId);
+    if (!targetUser) return;
+    if (targetUser.id === 'usr_admin') {
+      this.showToast('Không thể thay đổi quyền của tài khoản Admin gốc!', 'warning');
+      return;
+    }
+
+    const currentlyAdmin = window.SERVICES.Auth.isAdmin(targetUser);
+    targetUser.role = currentlyAdmin ? "Sinh viên ULIS - ĐHQGHN" : "Quản trị viên";
+    window.SERVICES.Auth.saveUsers(users);
+
+    this.showToast(`Đã ${currentlyAdmin ? 'gỡ quyền Admin của' : 'thăng cấp Admin cho'} ${targetUser.name}!`, 'success');
+    this.openDatabaseModal('accounts');
+    this.render();
+  },
+
   deleteUserAccount: function(userId, userName) {
+    if (!this.state.currentUser || !window.SERVICES.Auth.isAdmin(this.state.currentUser)) {
+      this.showToast('Chỉ Quản trị viên mới có quyền xóa tài khoản!', 'danger');
+      return;
+    }
     if (!confirm(`Bạn có chắc chắn muốn xóa tài khoản "${userName}" và toàn bộ bài làm/thư của sinh viên này khỏi CSDL?`)) {
       return;
     }
@@ -912,11 +944,16 @@ window.APP = {
   },
 
   exportDatabaseJson: function() {
+    if (!this.state.currentUser || !window.SERVICES.Auth.isAdmin(this.state.currentUser)) {
+      this.showToast('Chỉ Quản trị viên mới có quyền xuất file CSDL!', 'danger');
+      return;
+    }
     window.SERVICES.Auth.exportDatabaseJson();
     this.showToast('✓ Đã xuất toàn bộ Cơ Sở Dữ Liệu sinh viên thành file JSON!', 'success');
   },
 
   testSupabaseConnection: async function() {
+    if (!this.state.currentUser || !window.SERVICES.Auth.isAdmin(this.state.currentUser)) return;
     const url = document.getElementById('sbUrlInput')?.value;
     const key = document.getElementById('sbKeyInput')?.value;
 

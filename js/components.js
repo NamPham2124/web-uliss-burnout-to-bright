@@ -231,6 +231,7 @@ window.COMPONENTS = {
   renderNavbar: function(user, activePage, streakInfo, unreadNotifsCount, favsCount, audioState) {
     const chapters = window.APP_DATA.chapters;
     const isPlaying = audioState && audioState.isPlaying;
+    const isAdmin = window.SERVICES?.Auth?.isAdmin ? window.SERVICES.Auth.isAdmin(user) : false;
 
     return `
       <header class="sticky top-0 z-40 bg-white/85 backdrop-blur-md border-b border-emerald-100 shadow-sm">
@@ -298,11 +299,13 @@ window.COMPONENTS = {
                 <span class="hidden sm:inline">${isPlaying ? 'Nhạc: Bật' : 'Nhạc nền'}</span>
               </button>
 
-              <!-- Database Modal Button -->
-              <button onclick="APP.openDatabaseModal('accounts')" title="Quản lý Cơ sở Dữ liệu & Tài khoản" 
+              ${isAdmin ? `
+              <!-- Database Modal Button (Admin Only) -->
+              <button onclick="APP.openDatabaseModal('accounts')" title="Quản trị Cơ sở Dữ liệu & Tài khoản (Chỉ Admin)" 
                       class="w-9 h-9 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 flex items-center justify-center transition-all text-xs border border-indigo-200 shadow-sm">
                 <i class="fas fa-database"></i>
               </button>
+              ` : ''}
 
               <!-- User Profile & Logout -->
               <div class="flex items-center space-x-2 pl-1 border-l border-slate-200">
@@ -344,6 +347,11 @@ window.COMPONENTS = {
           <button onclick="APP.navigateTo('dashboard'); APP.toggleMobileNav();" class="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-slate-700 hover:bg-emerald-50">
             <i class="fas fa-chart-line mr-2 text-teal-600"></i> Quản Lý Tiến Độ
           </button>
+          ${isAdmin ? `
+          <button onclick="APP.openDatabaseModal('accounts'); APP.toggleMobileNav();" class="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-indigo-700 bg-indigo-50/70 hover:bg-indigo-100">
+            <i class="fas fa-database mr-2 text-indigo-600"></i> Quản Trị Cơ Sở Dữ Liệu (Admin)
+          </button>
+          ` : ''}
         </div>
       </header>
     `;
@@ -1537,18 +1545,30 @@ window.COMPONENTS = {
     const challengeDoneCount = Object.values(userProgress?.progress?.ch4?.challenge11Days || {}).filter(c => c.completed).length;
     const overall = window.SERVICES.Progress.getOverallProgress(user.id);
     const lettersCount = (userProgress?.futureLetters || []).length;
+    const isAdmin = window.SERVICES?.Auth?.isAdmin ? window.SERVICES.Auth.isAdmin(user) : false;
 
     return `
       <div class="max-w-4xl mx-auto space-y-10 pb-16">
         <!-- User Info Header -->
         <div class="glass-card rounded-3xl p-6 sm:p-8 border border-white/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg bg-white/90">
           <div class="flex items-center space-x-4">
-            <div class="w-16 h-16 rounded-full bg-emerald-600 text-white font-extrabold text-2xl flex items-center justify-center shadow-lg shadow-emerald-200">
+            <div class="w-16 h-16 rounded-full ${isAdmin ? 'bg-indigo-600' : 'bg-emerald-600'} text-white font-extrabold text-2xl flex items-center justify-center shadow-lg ${isAdmin ? 'shadow-indigo-200' : 'shadow-emerald-200'}">
               ${user.name.charAt(0).toUpperCase()}
             </div>
             <div>
-              <h1 class="text-2xl font-bold text-slate-900 font-serif-title">${user.name}</h1>
-              <p class="text-xs font-semibold text-emerald-600">${user.role} • ${user.email}</p>
+              <div class="flex items-center space-x-2">
+                <h1 class="text-2xl font-bold text-slate-900 font-serif-title">${user.name}</h1>
+                ${isAdmin ? `<span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-100 text-indigo-800 border border-indigo-200 uppercase tracking-wider"><i class="fas fa-shield-halved mr-1"></i>Admin</span>` : ''}
+              </div>
+              <p class="text-xs font-semibold ${isAdmin ? 'text-indigo-600' : 'text-emerald-600'}">${user.role} • ${user.email}</p>
+              ${isAdmin ? `
+                <div class="pt-2">
+                  <button onclick="APP.openDatabaseModal('accounts')" class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold transition-all shadow-sm">
+                    <i class="fas fa-database text-[11px]"></i>
+                    <span>Khu Vực Quản Trị CSDL & Tài Khoản</span>
+                  </button>
+                </div>
+              ` : ''}
             </div>
           </div>
 
@@ -1767,27 +1787,42 @@ window.COMPONENTS = {
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
-                  ${users.map(u => `
+                  ${users.map(u => {
+                    const isUAdmin = window.SERVICES.Auth.isAdmin(u);
+                    return `
                     <tr class="hover:bg-slate-50/80">
-                      <td class="p-3 font-bold text-slate-900">${u.name}</td>
+                      <td class="p-3 font-bold text-slate-900 flex items-center space-x-1.5">
+                        <span>${u.name}</span>
+                        ${isUAdmin ? '<span class="px-1.5 py-0.2 rounded text-[9px] font-extrabold bg-indigo-100 text-indigo-800">ADMIN</span>' : ''}
+                      </td>
                       <td class="p-3 text-slate-600">${u.email}</td>
-                      <td class="p-3"><span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700">${u.role}</span></td>
+                      <td class="p-3">
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold ${isUAdmin ? 'bg-indigo-100 text-indigo-800 font-bold border border-indigo-200' : 'bg-slate-100 text-slate-700'}">
+                          ${u.role}
+                        </span>
+                      </td>
                       <td class="p-3 font-bold ${u.testScore !== null ? 'text-emerald-600' : 'text-slate-400'}">
                         ${u.testScore !== null ? u.testScore.toFixed(2) + ' / 5.0' : '—'}
                       </td>
                       <td class="p-3 font-bold text-pink-600">${u.challengeCompletedDays}/11</td>
                       <td class="p-3 text-right space-x-1">
-                        <button onclick="APP.viewUserDetails('${u.id}')" title="Xem chi tiết" class="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg">
+                        <button onclick="APP.viewUserDetails('${u.id}')" title="Xem chi tiết bài làm" class="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg">
                           <i class="fas fa-eye"></i>
                         </button>
-                        ${u.id !== 'usr_guest' ? `
+                        ${u.id !== 'usr_admin' ? `
+                          <button onclick="APP.toggleUserAdminRole('${u.id}')" title="${isUAdmin ? 'Hạ quyền xuống Sinh viên' : 'Cấp quyền Quản trị viên (Admin)'}" class="p-1.5 ${isUAdmin ? 'bg-indigo-100 hover:bg-indigo-200 text-indigo-700' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'} rounded-lg">
+                            <i class="fas fa-shield-halved"></i>
+                          </button>
+                        ` : ''}
+                        ${u.id !== 'usr_guest' && u.id !== 'usr_admin' ? `
                           <button onclick="APP.deleteUserAccount('${u.id}', '${u.name}')" title="Xóa tài khoản" class="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg">
                             <i class="fas fa-trash-alt"></i>
                           </button>
                         ` : ''}
                       </td>
                     </tr>
-                  `).join('')}
+                  `;
+                  }).join('')}
                 </tbody>
               </table>
             </div>

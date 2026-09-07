@@ -12,32 +12,70 @@ window.SERVICES = {
     ACTIVE_USER_KEY: "bb_active_user",
 
     getUsers: function() {
+      let users = [];
       try {
         const data = localStorage.getItem(this.USERS_KEY);
-        if (data) return JSON.parse(data);
+        if (data) users = JSON.parse(data);
       } catch (e) {
         console.error("Error reading users db", e);
       }
-      const initialUsers = [
-        {
-          id: "usr_guest",
-          name: "Bạn Đọc Khách",
-          email: "khach@ulis.vnu.edu.vn",
-          password: "password123",
-          role: "Khách trải nghiệm",
-          createdAt: "2026-08-01T00:00:00.000Z"
-        },
-        {
-          id: "usr_demo",
-          name: "Nguyễn Thu Hà",
-          email: "thuha.ulis@vnu.edu.vn",
-          password: "password123",
-          role: "Sinh viên ULIS - ĐHQGHN",
-          createdAt: "2026-08-10T00:00:00.000Z"
-        }
-      ];
-      localStorage.setItem(this.USERS_KEY, JSON.stringify(initialUsers));
-      return initialUsers;
+
+      const defaultAdmin = {
+        id: "usr_admin",
+        name: "Quản Trị Viên",
+        email: "admin@ulis.vnu.edu.vn",
+        password: "admin123",
+        role: "Quản trị viên",
+        createdAt: "2026-08-01T00:00:00.000Z"
+      };
+
+      if (!Array.isArray(users) || users.length === 0) {
+        users = [
+          defaultAdmin,
+          {
+            id: "usr_guest",
+            name: "Bạn Đọc Khách",
+            email: "khach@ulis.vnu.edu.vn",
+            password: "password123",
+            role: "Khách trải nghiệm",
+            createdAt: "2026-08-01T00:00:00.000Z"
+          },
+          {
+            id: "usr_demo",
+            name: "Nguyễn Thu Hà",
+            email: "thuha.ulis@vnu.edu.vn",
+            password: "password123",
+            role: "Sinh viên ULIS - ĐHQGHN",
+            createdAt: "2026-08-10T00:00:00.000Z"
+          }
+        ];
+        localStorage.setItem(this.USERS_KEY, JSON.stringify(users));
+        return users;
+      }
+
+      // Ensure default admin account exists in DB
+      if (!users.some(u => u.email === defaultAdmin.email)) {
+        users.unshift(defaultAdmin);
+        localStorage.setItem(this.USERS_KEY, JSON.stringify(users));
+      }
+
+      return users;
+    },
+
+    isAdmin: function(user) {
+      if (!user) return false;
+      const role = (user.role || "").toLowerCase();
+      const email = (user.email || "").toLowerCase();
+      const name = (user.name || "").toLowerCase();
+      return (
+        role.includes("quản trị") ||
+        role.includes("admin") ||
+        email === "admin@ulis.vnu.edu.vn" ||
+        email.startsWith("admin@") ||
+        email.includes("ptnam2124") ||
+        email.includes("nampham2124") ||
+        name.includes("admin")
+      );
     },
 
     saveUsers: function(users) {
