@@ -22,42 +22,86 @@ window.SERVICES = {
 
       const defaultAdmin = {
         id: "usr_admin",
-        name: "Quản Trị Viên",
+        name: "Quản Trị Viên (Admin)",
         email: "admin@ulis.vnu.edu.vn",
         password: "admin123",
         role: "Quản trị viên",
         createdAt: "2026-08-01T00:00:00.000Z"
       };
 
+      const defaultUsers = [
+        defaultAdmin,
+        {
+          id: "usr_demo",
+          name: "Nguyễn Thu Hà",
+          email: "thuha.ulis@vnu.edu.vn",
+          password: "password123",
+          role: "Sinh viên ULIS - ĐHQGHN",
+          createdAt: "2026-08-10T00:00:00.000Z"
+        },
+        {
+          id: "usr_st1",
+          name: "Trần Minh Đức",
+          email: "minhduc.ulis@vnu.edu.vn",
+          password: "password123",
+          role: "Sinh viên ULIS - ĐHQGHN",
+          createdAt: "2026-08-12T00:00:00.000Z"
+        },
+        {
+          id: "usr_st2",
+          name: "Lê Hoàng Lan",
+          email: "lanle.ulis@vnu.edu.vn",
+          password: "password123",
+          role: "Sinh viên ULIS - ĐHQGHN",
+          createdAt: "2026-08-14T00:00:00.000Z"
+        },
+        {
+          id: "usr_st3",
+          name: "Phạm Tuấn Anh",
+          email: "tuananh.vnu@vnu.edu.vn",
+          password: "password123",
+          role: "Sinh viên ĐHQGHN",
+          createdAt: "2026-08-15T00:00:00.000Z"
+        },
+        {
+          id: "usr_st4",
+          name: "Đỗ Mai Phương",
+          email: "maiphuong.ulis@vnu.edu.vn",
+          password: "password123",
+          role: "Sinh viên ULIS - ĐHQGHN",
+          createdAt: "2026-08-18T00:00:00.000Z"
+        },
+        {
+          id: "usr_st5",
+          name: "Vũ Đình Trọng",
+          email: "trongvu.edu@vnu.edu.vn",
+          password: "password123",
+          role: "Sinh viên Đại học khác",
+          createdAt: "2026-08-20T00:00:00.000Z"
+        },
+        {
+          id: "usr_guest",
+          name: "Bạn Đọc Khách",
+          email: "khach@ulis.vnu.edu.vn",
+          password: "password123",
+          role: "Khách trải nghiệm",
+          createdAt: "2026-08-01T00:00:00.000Z"
+        }
+      ];
+
       if (!Array.isArray(users) || users.length === 0) {
-        users = [
-          defaultAdmin,
-          {
-            id: "usr_guest",
-            name: "Bạn Đọc Khách",
-            email: "khach@ulis.vnu.edu.vn",
-            password: "password123",
-            role: "Khách trải nghiệm",
-            createdAt: "2026-08-01T00:00:00.000Z"
-          },
-          {
-            id: "usr_demo",
-            name: "Nguyễn Thu Hà",
-            email: "thuha.ulis@vnu.edu.vn",
-            password: "password123",
-            role: "Sinh viên ULIS - ĐHQGHN",
-            createdAt: "2026-08-10T00:00:00.000Z"
-          }
-        ];
+        users = defaultUsers;
         localStorage.setItem(this.USERS_KEY, JSON.stringify(users));
         return users;
       }
 
-      // Ensure default admin account exists in DB
-      if (!users.some(u => u.email === defaultAdmin.email)) {
-        users.unshift(defaultAdmin);
-        localStorage.setItem(this.USERS_KEY, JSON.stringify(users));
-      }
+      // Ensure default users and admin exist in DB
+      defaultUsers.forEach(du => {
+        if (!users.some(u => u.email === du.email || u.id === du.id)) {
+          users.push(du);
+        }
+      });
+      localStorage.setItem(this.USERS_KEY, JSON.stringify(users));
 
       return users;
     },
@@ -200,6 +244,50 @@ window.SERVICES = {
         console.error("Failed to load user data", e);
       }
       const initial = this.getDefaultUserData();
+      const today = new Date().toISOString().split("T")[0];
+
+      // Realistic mock progress for demo student cohort to enrich visual analytics
+      if (userId === "usr_st1") {
+        initial.progress.ch1.testResult = { score: 4.33, level: "Báo động đỏ (Cần hỗ trợ)", timestamp: Date.now() - 86400000 * 2 };
+        initial.progress.ch2.memoryReflection = "Kỳ thi chứng chỉ quốc tế và khóa luận dồn dập khiến mình không ngủ được suốt 2 tuần liền, cảm giác kiệt quệ hoàn toàn.";
+        initial.progress.ch2.icebergModified = true;
+        initial.progress.ch3.waterLevel = { percent: 85, label: "Tràn Ly" };
+        initial.progress.ch3.valveMethod = "Kỹ thuật hít thở sâu 4-7-8";
+        initial.progress.ch4.challenge11Days = { 1: { completed: true }, 2: { completed: true }, 3: { completed: true } };
+        initial.futureLetters = [{ id: "l1", title: "Thư gửi tôi ngày tốt nghiệp", createdAt: "2026-08-15" }];
+        initial.streak = { count: 3, lastActivityDate: today, history: [today] };
+      } else if (userId === "usr_demo") {
+        initial.progress.ch1.testResult = { score: 3.22, level: "Kiệt sức trung bình", timestamp: Date.now() - 86400000 * 3 };
+        initial.progress.ch2.memoryReflection = "Mình luôn cảm thấy áp lực phải hoàn hảo trước mặt thầy cô và bạn bè.";
+        initial.progress.ch2.icebergModified = true;
+        initial.progress.ch3.waterLevel = { percent: 65, label: "Áp Lực Cao" };
+        initial.progress.ch3.valveMethod = "Viết nhật ký xả van áp lực";
+        initial.progress.ch4.challenge11Days = { 1: { completed: true }, 2: { completed: true }, 3: { completed: true }, 4: { completed: true }, 5: { completed: true } };
+        initial.futureLetters = [{ id: "l2", title: "Gửi tôi sau 6 tháng", createdAt: "2026-08-18" }];
+        initial.streak = { count: 5, lastActivityDate: today, history: [today] };
+      } else if (userId === "usr_st2") {
+        initial.progress.ch1.testResult = { score: 2.33, level: "Chớm mệt mỏi", timestamp: Date.now() - 86400000 * 4 };
+        initial.progress.ch2.icebergModified = true;
+        initial.progress.ch3.valveMethod = "Đi bộ ngắm cây xanh trong khuôn viên ULIS";
+        initial.progress.ch4.challenge11Days = { 1: { completed: true }, 2: { completed: true }, 3: { completed: true }, 4: { completed: true }, 5: { completed: true }, 6: { completed: true }, 7: { completed: true }, 8: { completed: true } };
+        initial.streak = { count: 8, lastActivityDate: today, history: [today] };
+      } else if (userId === "usr_st3") {
+        initial.progress.ch1.testResult = { score: 1.44, level: "Khỏe mạnh / Ổn định", timestamp: Date.now() - 86400000 * 10 };
+        initial.progress.ch2.icebergModified = true;
+        initial.progress.ch3.dndState = { isCompleted: true, score: 3 };
+        initial.progress.ch3.pomodoroSessions = 8;
+        initial.progress.ch4.challenge11Days = { 1: { completed: true }, 2: { completed: true }, 3: { completed: true }, 4: { completed: true }, 5: { completed: true }, 6: { completed: true }, 7: { completed: true }, 8: { completed: true }, 9: { completed: true }, 10: { completed: true }, 11: { completed: true } };
+        initial.futureLetters = [{ id: "l3", title: "Nhìn lại hành trình 11 ngày", createdAt: "2026-08-25" }];
+        initial.streak = { count: 14, lastActivityDate: today, history: [today] };
+      } else if (userId === "usr_st4") {
+        initial.progress.ch1.testResult = { score: 3.78, level: "Kiệt sức trung bình", timestamp: Date.now() - 86400000 * 1 };
+        initial.progress.ch2.memoryReflection = "Bài tập nhóm bất đồng quan điểm và bài thi vấn đáp.";
+        initial.progress.ch2.icebergModified = true;
+        initial.progress.ch3.valveMethod = "Ngắt kết nối mạng xã hội 1 giờ";
+        initial.progress.ch4.challenge11Days = { 1: { completed: true }, 2: { completed: true } };
+        initial.streak = { count: 2, lastActivityDate: today, history: [today] };
+      }
+
       this.saveUserData(userId, initial);
       return initial;
     },
@@ -276,13 +364,24 @@ window.SERVICES = {
         const testScore = udata.progress?.ch1?.testResult?.score || null;
         const lettersCount = (udata.futureLetters || []).length;
         const streakDays = udata.streak?.count || 1;
+        const challengeCompletedDays = Object.values(udata.progress?.ch4?.challenge11Days || {}).filter(c => c && c.completed).length;
+        const chapter1Progress = window.SERVICES.Progress ? window.SERVICES.Progress.calculateChapterProgress(u.id, 1) : 0;
+        const chapter2Progress = window.SERVICES.Progress ? window.SERVICES.Progress.calculateChapterProgress(u.id, 2) : 0;
+        const chapter3Progress = window.SERVICES.Progress ? window.SERVICES.Progress.calculateChapterProgress(u.id, 3) : 0;
+        const chapter4Progress = window.SERVICES.Progress ? window.SERVICES.Progress.calculateChapterProgress(u.id, 4) : 0;
         const overall = window.SERVICES.Progress ? window.SERVICES.Progress.getOverallProgress(u.id) : 0;
         return {
           ...u,
           testScore,
+          challengeCompletedDays,
+          chapter1Progress,
+          chapter2Progress,
+          chapter3Progress,
+          chapter4Progress,
           lettersCount,
           streakDays,
-          overallProgress: overall
+          overallProgress: overall,
+          fullUserData: udata
         };
       });
     },
@@ -1107,6 +1206,169 @@ window.SERVICES = {
       } catch (e) {
         return { success: false, message: `Không thể kết nối đến máy chủ Supabase: ${e.message}` };
       }
+    }
+  },
+
+  // ==========================================
+  // 10. ANALYTICS & STATISTICAL INTELLIGENCE SERVICE
+  // ==========================================
+  Analytics: {
+    getOverviewStats: function() {
+      const allUsers = window.SERVICES.Auth.getAllUsersWithStats();
+      const students = allUsers.filter(u => !window.SERVICES.Auth.isAdmin(u));
+      const targetPool = students.length > 0 ? students : allUsers;
+
+      const totalStudents = targetPool.length;
+      const testedStudents = targetPool.filter(u => u.testScore !== null);
+      const testCount = testedStudents.length;
+      const testRate = totalStudents > 0 ? Math.round((testCount / totalStudents) * 100) : 0;
+
+      const sumScores = testedStudents.reduce((acc, u) => acc + (u.testScore || 0), 0);
+      const avgScoreNum = testCount > 0 ? (sumScores / testCount) : 0;
+      const avgScore = avgScoreNum.toFixed(2);
+
+      const severity = {
+        healthy: testedStudents.filter(u => u.testScore < 2.0).length,
+        mild: testedStudents.filter(u => u.testScore >= 2.0 && u.testScore < 3.0).length,
+        moderate: testedStudents.filter(u => u.testScore >= 3.0 && u.testScore < 4.0).length,
+        critical: testedStudents.filter(u => u.testScore >= 4.0).length
+      };
+
+      const chapterStats = {
+        ch1: {
+          title: "Chương 1: Nhận diện Burnout",
+          completedCount: targetPool.filter(u => (u.chapter1Progress || 0) >= 100).length,
+          avgPercent: totalStudents > 0 ? Math.round(targetPool.reduce((sum, u) => sum + (u.chapter1Progress || 0), 0) / totalStudents) : 0
+        },
+        ch2: {
+          title: "Chương 2: Mô hình Tảng Băng Trôi",
+          completedCount: targetPool.filter(u => (u.chapter2Progress || 0) >= 100).length,
+          avgPercent: totalStudents > 0 ? Math.round(targetPool.reduce((sum, u) => sum + (u.chapter2Progress || 0), 0) / totalStudents) : 0
+        },
+        ch3: {
+          title: "Chương 3: Chiếc Van Xả Áp Lực",
+          completedCount: targetPool.filter(u => (u.chapter3Progress || 0) >= 60).length,
+          avgPercent: totalStudents > 0 ? Math.round(targetPool.reduce((sum, u) => sum + (u.chapter3Progress || 0), 0) / totalStudents) : 0
+        },
+        ch4: {
+          title: "Chương 4: Tái Tạo Thân - Tâm - Trí",
+          completedCount: targetPool.filter(u => (u.chapter4Progress || 0) >= 50).length,
+          avgPercent: totalStudents > 0 ? Math.round(targetPool.reduce((sum, u) => sum + (u.chapter4Progress || 0), 0) / totalStudents) : 0
+        }
+      };
+
+      const challengeStats = [];
+      for (let day = 1; day <= 11; day++) {
+        const doneUsers = targetPool.filter(u => {
+          const days = u.fullUserData?.progress?.ch4?.challenge11Days || {};
+          return days[day]?.completed;
+        }).length;
+        challengeStats.push({
+          day: day,
+          count: doneUsers,
+          rate: totalStudents > 0 ? Math.round((doneUsers / totalStudents) * 100) : 0
+        });
+      }
+
+      const roleStats = {
+        ulis: targetPool.filter(u => (u.role || "").includes("ULIS")).length,
+        vnu: targetPool.filter(u => (u.role || "").includes("ĐHQGHN") && !(u.role || "").includes("ULIS")).length,
+        otherUni: targetPool.filter(u => (u.role || "").includes("Đại học khác")).length,
+        guest: targetPool.filter(u => (u.role || "").includes("Khách") || (u.role || "").includes("Giảng viên")).length
+      };
+
+      const totalLetters = targetPool.reduce((sum, u) => sum + (u.lettersCount || 0), 0);
+      const avgStreak = totalStudents > 0 ? (targetPool.reduce((sum, u) => sum + (u.streakDays || 1), 0) / totalStudents).toFixed(1) : "1.0";
+      const avgOverallProgress = totalStudents > 0 ? Math.round(targetPool.reduce((sum, u) => sum + (u.overallProgress || 0), 0) / totalStudents) : 0;
+
+      const reliefMethods = {};
+      targetPool.forEach(u => {
+        const m = u.fullUserData?.progress?.ch3?.valveMethod;
+        if (m) reliefMethods[m] = (reliefMethods[m] || 0) + 1;
+      });
+
+      return {
+        allUsers,
+        targetPool,
+        totalStudents,
+        testCount,
+        testRate,
+        avgScore,
+        avgScoreNum,
+        severity,
+        chapterStats,
+        challengeStats,
+        roleStats,
+        totalLetters,
+        avgStreak,
+        avgOverallProgress,
+        reliefMethods
+      };
+    },
+
+    sendSupportMessage: function(targetUserId, title, message) {
+      if (!targetUserId) return { success: false, message: "Thiếu ID sinh viên." };
+      const targetData = window.SERVICES.Auth.getUserData(targetUserId);
+      const targetUser = window.SERVICES.Auth.getUsers().find(u => u.id === targetUserId);
+
+      const notifItem = {
+        id: "notif_admin_" + Date.now(),
+        type: "counseling",
+        title: title || "Lời nhắn từ Ban Đề Án Burn Bright",
+        message: message || "Chúng mình luôn sẵn sàng đồng hành và hỗ trợ bạn vượt qua giai đoạn này.",
+        ctaText: "Xem Sổ Tay",
+        ctaPath: "intro",
+        createdAt: new Date().toISOString(),
+        isRead: false
+      };
+
+      const emailLogItem = {
+        id: "email_admin_" + Date.now(),
+        toEmail: targetUser ? targetUser.email : "student@vnu.edu.vn",
+        toName: targetUser ? targetUser.name : "Sinh viên",
+        subject: title,
+        body: message,
+        type: "admin_support",
+        sentAt: new Date().toLocaleTimeString("vi-VN") + " " + new Date().toLocaleDateString("vi-VN"),
+        status: "Đã gửi qua hệ thống"
+      };
+
+      targetData.notifications = targetData.notifications || [];
+      targetData.notifications.unshift(notifItem);
+
+      targetData.emailLogs = targetData.emailLogs || [];
+      targetData.emailLogs.unshift(emailLogItem);
+
+      window.SERVICES.Auth.saveUserData(targetUserId, targetData);
+      return { success: true, notif: notifItem };
+    },
+
+    exportCsvReport: function() {
+      const stats = this.getOverviewStats();
+      const users = stats.targetPool;
+      let csv = "Mã Sinh Viên,Họ và Tên,Email,Vai Trò,Điểm Kiệt Sức (SBI-9),Phân Loại Lâm Sàng,Tiến Độ Tổng (%),Chương 1 (%),Chương 2 (%),Chương 3 (%),Chương 4 (%),Thử Thách 11 Ngày,Số Thư Tương Lai,Streak (Ngày)\n";
+
+      users.forEach(u => {
+        let level = "Chưa làm bài test";
+        if (u.testScore !== null) {
+          if (u.testScore >= 4.0) level = "Báo động đỏ (Cần hỗ trợ)";
+          else if (u.testScore >= 3.0) level = "Kiệt sức trung bình";
+          else if (u.testScore >= 2.0) level = "Chớm mệt mỏi";
+          else level = "Khỏe mạnh / Ổn định";
+        }
+        const s = u.testScore !== null ? u.testScore.toFixed(2) : "—";
+        csv += `"${u.id}","${u.name}","${u.email}","${u.role}","${s}","${level}",${u.overallProgress}%,${u.chapter1Progress}%,${u.chapter2Progress}%,${u.chapter3Progress}%,${u.chapter4Progress}%,${u.challengeCompletedDays || 0}/11,${u.lettersCount || 0},${u.streakDays || 1}\n`;
+      });
+
+      const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `bao-cao-sinh-vien-burnout-ulis-${new Date().toISOString().split("T")[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     }
   }
 };

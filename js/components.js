@@ -281,6 +281,13 @@ window.COMPONENTS = {
                       class="px-3 py-2 rounded-xl transition-all ${activePage === 'dashboard' ? 'bg-emerald-50 text-emerald-700 font-extrabold shadow-sm' : 'text-slate-600 hover:text-emerald-700 hover:bg-slate-50'}">
                 <i class="fas fa-chart-line mr-1"></i> Tiến Độ
               </button>
+
+              ${isAdmin ? `
+              <button onclick="APP.navigateTo('admin')" 
+                      class="px-3 py-2 rounded-xl transition-all ${activePage === 'admin' ? 'bg-indigo-600 text-white font-extrabold shadow-sm' : 'text-indigo-700 bg-indigo-50/80 hover:bg-indigo-100 font-bold'}">
+                <i class="fas fa-chart-pie mr-1"></i> Thống Kê
+              </button>
+              ` : ''}
             </nav>
 
             <!-- Right: Interactive Controls -->
@@ -348,6 +355,9 @@ window.COMPONENTS = {
             <i class="fas fa-chart-line mr-2 text-teal-600"></i> Quản Lý Tiến Độ
           </button>
           ${isAdmin ? `
+          <button onclick="APP.navigateTo('admin'); APP.toggleMobileNav();" class="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-indigo-700 bg-indigo-50/90 hover:bg-indigo-100">
+            <i class="fas fa-chart-pie mr-2 text-indigo-600"></i> Trung Tâm Thống Kê & Phân Tích (Admin)
+          </button>
           <button onclick="APP.openDatabaseModal('accounts'); APP.toggleMobileNav();" class="w-full text-left px-3 py-2 rounded-xl text-xs font-bold text-indigo-700 bg-indigo-50/70 hover:bg-indigo-100">
             <i class="fas fa-database mr-2 text-indigo-600"></i> Quản Trị Cơ Sở Dữ Liệu (Admin)
           </button>
@@ -1912,6 +1922,660 @@ window.COMPONENTS = {
             <h4 class="font-bold text-slate-800">3. Thư Gửi Tương Lai:</h4>
             <div class="font-bold text-indigo-600">Đã lưu ${letters.length} bức thư</div>
           </div>
+        </div>
+      </div>
+    `;
+  },
+
+  // =========================================================================
+  // 15. ADMIN ANALYTICS & STATISTICAL DASHBOARD COMPONENT
+  // =========================================================================
+  renderAdminAnalyticsPage: function(stats, currentFilter = 'all', searchQuery = '') {
+    if (!stats) return '';
+
+    // Filter students for table
+    let filteredStudents = [...stats.targetPool];
+
+    if (currentFilter === 'critical') {
+      filteredStudents = filteredStudents.filter(u => u.testScore !== null && u.testScore >= 4.0);
+    } else if (currentFilter === 'moderate') {
+      filteredStudents = filteredStudents.filter(u => u.testScore !== null && u.testScore >= 3.0 && u.testScore < 4.0);
+    } else if (currentFilter === 'mild') {
+      filteredStudents = filteredStudents.filter(u => u.testScore !== null && u.testScore >= 2.0 && u.testScore < 3.0);
+    } else if (currentFilter === 'healthy') {
+      filteredStudents = filteredStudents.filter(u => u.testScore !== null && u.testScore < 2.0);
+    } else if (currentFilter === 'untested') {
+      filteredStudents = filteredStudents.filter(u => u.testScore === null);
+    }
+
+    if (searchQuery && searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      filteredStudents = filteredStudents.filter(u => 
+        (u.name && u.name.toLowerCase().includes(q)) || 
+        (u.email && u.email.toLowerCase().includes(q)) ||
+        (u.role && u.role.toLowerCase().includes(q))
+      );
+    }
+
+    const avgScore = Number(stats.avgScore);
+    const avgScoreBadge = avgScore >= 4.0 
+      ? { text: 'Báo động đỏ (Cần can thiệp)', color: 'bg-rose-100 text-rose-800 border-rose-200' }
+      : avgScore >= 3.0 
+      ? { text: 'Kiệt sức trung bình', color: 'bg-orange-100 text-orange-800 border-orange-200' }
+      : avgScore >= 2.0 
+      ? { text: 'Chớm mệt mỏi', color: 'bg-amber-100 text-amber-800 border-amber-200' }
+      : { text: 'Khỏe mạnh / Ổn định', color: 'bg-emerald-100 text-emerald-800 border-emerald-200' };
+
+    return `
+      <div class="space-y-10 pb-20">
+        <!-- Page Header -->
+        <div class="glass-card rounded-3xl p-6 sm:p-8 border border-indigo-100 shadow-xl bg-gradient-to-br from-white via-indigo-50/30 to-purple-50/40 space-y-6">
+          <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-6 border-b border-indigo-100/70">
+            <div class="space-y-1">
+              <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-indigo-100 text-indigo-800 text-xs font-bold border border-indigo-200">
+                <i class="fas fa-shield-halved text-indigo-600"></i>
+                <span>Phân Hệ Dành Riêng Cho Ban Quản Trị & Nghiên Cứu</span>
+              </div>
+              <h1 class="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 font-serif-title">
+                Trung Tâm Phân Tích & Giám Sát Sức Khỏe Tinh Thần
+              </h1>
+              <p class="text-xs sm:text-sm text-slate-600">
+                Dữ liệu thực tế: Thang đo kiệt sức học tập SBI-9, phễu tiến độ 4 chương và xu hướng rèn luyện sinh viên ULIS - ĐHQGHN.
+              </p>
+            </div>
+
+            <!-- Action Toolbar -->
+            <div class="flex flex-wrap items-center gap-2.5">
+              <button onclick="APP.exportAnalyticsCsv()" title="Tải file Excel báo cáo toàn bộ người dùng" 
+                      class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md shadow-emerald-200 transition-all flex items-center space-x-1.5">
+                <i class="fas fa-file-excel text-sm"></i>
+                <span>Xuất Báo Cáo Excel (CSV)</span>
+              </button>
+
+              <button onclick="window.print()" title="In hoặc lưu PDF trang báo cáo" 
+                      class="px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs border border-slate-200 transition-all flex items-center space-x-1.5">
+                <i class="fas fa-print"></i>
+                <span>In / PDF</span>
+              </button>
+
+              <button onclick="APP.openDatabaseModal('accounts')" title="Mở bảng điều khiển cơ sở dữ liệu Supabase" 
+                      class="px-3.5 py-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs border border-indigo-200 transition-all flex items-center space-x-1.5">
+                <i class="fas fa-database"></i>
+                <span>Quản Trị CSDL</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 5 Big KPI Metric Cards -->
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+            
+            <!-- KPI 1 -->
+            <div class="bg-white/90 p-4 rounded-2xl border border-indigo-100 shadow-sm space-y-1">
+              <div class="flex items-center justify-between text-slate-400">
+                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Tổng Sinh Viên</span>
+                <i class="fas fa-users text-indigo-500 text-base"></i>
+              </div>
+              <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 font-serif-title">${stats.totalStudents}</div>
+              <div class="text-[11px] text-emerald-600 font-semibold">${stats.roleStats.ulis} sinh viên ULIS</div>
+            </div>
+
+            <!-- KPI 2 -->
+            <div class="bg-white/90 p-4 rounded-2xl border border-emerald-100 shadow-sm space-y-1">
+              <div class="flex items-center justify-between text-slate-400">
+                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Tỷ Lệ Làm Test SBI</span>
+                <i class="fas fa-clipboard-check text-emerald-500 text-base"></i>
+              </div>
+              <div class="text-2xl sm:text-3xl font-extrabold text-emerald-600 font-serif-title">${stats.testRate}%</div>
+              <div class="text-[11px] text-slate-500 font-semibold">${stats.testCount} / ${stats.totalStudents} sinh viên</div>
+            </div>
+
+            <!-- KPI 3 -->
+            <div class="bg-white/90 p-4 rounded-2xl border border-rose-100 shadow-sm space-y-1">
+              <div class="flex items-center justify-between text-slate-400">
+                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Điểm Kiệt Sức TB</span>
+                <i class="fas fa-heart-pulse text-rose-500 text-base"></i>
+              </div>
+              <div class="text-2xl sm:text-3xl font-extrabold text-slate-900 font-serif-title">${stats.avgScore} <span class="text-xs text-slate-400 font-sans font-normal">/ 5.0</span></div>
+              <div>
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold border ${avgScoreBadge.color}">${avgScoreBadge.text}</span>
+              </div>
+            </div>
+
+            <!-- KPI 4 -->
+            <div class="bg-white/90 p-4 rounded-2xl border border-teal-100 shadow-sm space-y-1">
+              <div class="flex items-center justify-between text-slate-400">
+                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Tiến Độ Trung Bình</span>
+                <i class="fas fa-chart-simple text-teal-500 text-base"></i>
+              </div>
+              <div class="text-2xl sm:text-3xl font-extrabold text-teal-600 font-serif-title">${stats.avgOverallProgress}%</div>
+              <div class="text-[11px] text-slate-500 font-semibold">Bình quân 4 chương học</div>
+            </div>
+
+            <!-- KPI 5 -->
+            <div class="bg-white/90 p-4 rounded-2xl border border-pink-100 shadow-sm space-y-1 col-span-2 sm:col-span-1">
+              <div class="flex items-center justify-between text-slate-400">
+                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Thư & Thói Quen</span>
+                <i class="fas fa-envelope-open-text text-pink-500 text-base"></i>
+              </div>
+              <div class="text-2xl sm:text-3xl font-extrabold text-pink-600 font-serif-title">${stats.totalLetters} <span class="text-xs text-slate-400 font-sans font-normal">Thư</span></div>
+              <div class="text-[11px] text-slate-500 font-semibold">Chuỗi TB: ${stats.avgStreak} ngày</div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Clinical Early Warning Box (if critical cases exist) -->
+        ${stats.severity.critical > 0 ? `
+          <div class="p-5 rounded-2xl bg-rose-50/90 border border-rose-200 shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div class="flex items-start space-x-3">
+              <div class="w-10 h-10 rounded-xl bg-rose-500 text-white flex items-center justify-center flex-shrink-0 text-lg shadow-sm animate-pulse">
+                <i class="fas fa-triangle-exclamation"></i>
+              </div>
+              <div class="space-y-0.5">
+                <h4 class="text-sm font-bold text-rose-900 flex items-center space-x-2">
+                  <span>Cảnh báo tâm lý: Có ${stats.severity.critical} sinh viên ở mức BÁO ĐỘNG ĐỎ (Điểm SBI-9 ≥ 4.00)</span>
+                </h4>
+                <p class="text-xs text-rose-700 leading-relaxed">
+                  Nhóm sinh viên này đang đối mặt với kiệt quệ cảm xúc và suy giảm hiệu quả học tập nghiêm trọng. Khuyến nghị Ban Quản trị gửi thông điệp đồng hành hoặc đề xuất tham vấn tâm lý kịp thời.
+                </p>
+              </div>
+            </div>
+            <button onclick="APP.setAnalyticsFilter('critical')" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold whitespace-nowrap shadow-md shadow-rose-200 transition-all flex items-center space-x-1.5 flex-shrink-0">
+              <i class="fas fa-filter"></i>
+              <span>Lọc danh sách khẩn cấp</span>
+            </button>
+          </div>
+        ` : ''}
+
+        <!-- 4 Visual Charts Grid (Interactive Canvas with Chart.js) -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          
+          <!-- Chart 1: Burnout Severity Distribution -->
+          <div class="glass-card rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-md bg-white space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div>
+                <h3 class="text-base font-bold text-slate-900 font-serif-title flex items-center space-x-2">
+                  <i class="fas fa-pie-chart text-emerald-600"></i>
+                  <span>Phân Bổ Mức Độ Kiệt Sức (Thang Đo SBI-9)</span>
+                </h3>
+                <p class="text-[11px] text-slate-500">Phân loại lâm sàng theo chuẩn Thang đo SBI 9 câu</p>
+              </div>
+              <span class="text-xs font-bold text-slate-600">${stats.testCount} sinh viên đã test</span>
+            </div>
+
+            <div class="relative h-64 sm:h-72 w-full flex items-center justify-center">
+              <canvas id="chartBurnoutSeverity"></canvas>
+            </div>
+
+            <!-- Custom Data Legend Bar -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 text-center text-xs">
+              <div class="p-2 rounded-xl bg-emerald-50 border border-emerald-100">
+                <div class="font-extrabold text-emerald-700 text-base">${stats.severity.healthy}</div>
+                <div class="text-[10px] text-slate-500 font-semibold">Ổn định (<2.0)</div>
+              </div>
+              <div class="p-2 rounded-xl bg-amber-50 border border-amber-100">
+                <div class="font-extrabold text-amber-700 text-base">${stats.severity.mild}</div>
+                <div class="text-[10px] text-slate-500 font-semibold">Chớm mệt (2.0-2.9)</div>
+              </div>
+              <div class="p-2 rounded-xl bg-orange-50 border border-orange-100">
+                <div class="font-extrabold text-orange-700 text-base">${stats.severity.moderate}</div>
+                <div class="text-[10px] text-slate-500 font-semibold">Kiệt sức TB (3.0-3.9)</div>
+              </div>
+              <div class="p-2 rounded-xl bg-rose-50 border border-rose-100">
+                <div class="font-extrabold text-rose-700 text-base">${stats.severity.critical}</div>
+                <div class="text-[10px] text-slate-500 font-semibold">Báo động đỏ (≥4.0)</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Chart 2: Chapter Funnel Progress -->
+          <div class="glass-card rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-md bg-white space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div>
+                <h3 class="text-base font-bold text-slate-900 font-serif-title flex items-center space-x-2">
+                  <i class="fas fa-filter-circle-dollar text-indigo-600"></i>
+                  <span>Phễu Tiến Độ Hoàn Thành 4 Chương Học</span>
+                </h3>
+                <p class="text-[11px] text-slate-500">Tỷ lệ duy trì và tỷ lệ hoàn tất theo từng chặng sổ tay</p>
+              </div>
+              <span class="text-xs font-bold text-indigo-600">4 Chặng Hành Trình</span>
+            </div>
+
+            <div class="relative h-64 sm:h-72 w-full flex items-center justify-center">
+              <canvas id="chartChapterFunnel"></canvas>
+            </div>
+
+            <!-- Chapter Detailed Summary Rows -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 text-center text-xs">
+              <div class="p-2 rounded-xl bg-slate-50 border border-slate-200">
+                <div class="font-extrabold text-emerald-600 text-sm">${stats.chapterStats.ch1.avgPercent}%</div>
+                <div class="text-[10px] text-slate-500 font-semibold truncate">C1: Nhận diện</div>
+              </div>
+              <div class="p-2 rounded-xl bg-slate-50 border border-slate-200">
+                <div class="font-extrabold text-cyan-600 text-sm">${stats.chapterStats.ch2.avgPercent}%</div>
+                <div class="text-[10px] text-slate-500 font-semibold truncate">C2: Giải mã</div>
+              </div>
+              <div class="p-2 rounded-xl bg-slate-50 border border-slate-200">
+                <div class="font-extrabold text-amber-600 text-sm">${stats.chapterStats.ch3.avgPercent}%</div>
+                <div class="text-[10px] text-slate-500 font-semibold truncate">C3: Xả van</div>
+              </div>
+              <div class="p-2 rounded-xl bg-slate-50 border border-slate-200">
+                <div class="font-extrabold text-pink-600 text-sm">${stats.chapterStats.ch4.avgPercent}%</div>
+                <div class="text-[10px] text-slate-500 font-semibold truncate">C4: Tái tạo</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Chart 3: 11-Day Recovery Challenge Retention Curve -->
+          <div class="glass-card rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-md bg-white space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div>
+                <h3 class="text-base font-bold text-slate-900 font-serif-title flex items-center space-x-2">
+                  <i class="fas fa-calendar-check text-pink-600"></i>
+                  <span>Tiến Độ Giữ Vững Thử Thách 11 Ngày</span>
+                </h3>
+                <p class="text-[11px] text-slate-500">Số lượng sinh viên duy trì thói quen phục hồi qua từng ngày</p>
+              </div>
+              <span class="text-xs font-bold text-pink-600">Thân - Tâm - Trí</span>
+            </div>
+
+            <div class="relative h-64 sm:h-72 w-full flex items-center justify-center">
+              <canvas id="chartChallenge11Days"></canvas>
+            </div>
+
+            <div class="p-3 bg-pink-50/70 rounded-xl border border-pink-100 text-[11px] text-pink-900 flex items-center justify-between">
+              <span>💡 Thói quen Ngày 1 (Uống nước) & Ngày 3 (Giãn cơ) có tỷ lệ hoàn thành cao nhất.</span>
+              <span class="font-bold text-pink-700">11 Ngày Rèn Luyện</span>
+            </div>
+          </div>
+
+          <!-- Chart 4: Audience & Faculties Distribution -->
+          <div class="glass-card rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-md bg-white space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div>
+                <h3 class="text-base font-bold text-slate-900 font-serif-title flex items-center space-x-2">
+                  <i class="fas fa-school text-blue-600"></i>
+                  <span>Phân Bố Sinh Viên Theo Đơn Vị & Khoa Đào Tạo</span>
+                </h3>
+                <p class="text-[11px] text-slate-500">Cơ cấu người dùng tham gia dự án sổ tay</p>
+              </div>
+              <span class="text-xs font-bold text-blue-600">ULIS & ĐHQGHN</span>
+            </div>
+
+            <div class="relative h-64 sm:h-72 w-full flex items-center justify-center">
+              <canvas id="chartAudienceDist"></canvas>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 text-center text-xs">
+              <div class="p-2 rounded-xl bg-emerald-50 border border-emerald-100">
+                <div class="font-extrabold text-emerald-700">${stats.roleStats.ulis}</div>
+                <div class="text-[10px] text-slate-500 font-semibold">SV ULIS</div>
+              </div>
+              <div class="p-2 rounded-xl bg-blue-50 border border-blue-100">
+                <div class="font-extrabold text-blue-700">${stats.roleStats.vnu}</div>
+                <div class="text-[10px] text-slate-500 font-semibold">ĐHQGHN khác</div>
+              </div>
+              <div class="p-2 rounded-xl bg-purple-50 border border-purple-100">
+                <div class="font-extrabold text-purple-700">${stats.roleStats.otherUni}</div>
+                <div class="text-[10px] text-slate-500 font-semibold">Đại học khác</div>
+              </div>
+              <div class="p-2 rounded-xl bg-slate-50 border border-slate-200">
+                <div class="font-extrabold text-slate-700">${stats.roleStats.guest}</div>
+                <div class="text-[10px] text-slate-500 font-semibold">Khách / GV</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Deep Psychological Insights Cards: Stressors & Coping Mechanisms -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <!-- Top Stressors (From Iceberg Model) -->
+          <div class="glass-card rounded-3xl p-6 border border-amber-100 bg-white shadow-md space-y-4">
+            <div class="flex items-center space-x-3">
+              <div class="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center text-base shadow-sm">
+                <i class="fas fa-icicles"></i>
+              </div>
+              <div>
+                <h3 class="text-base font-bold text-slate-900 font-serif-title">Top Áp Lực Sinh Viên Đối Mặt Nhiều Nhất</h3>
+                <p class="text-[11px] text-slate-500">Trích xuất từ dữ liệu bài tập Mô hình Tảng Băng Trôi (Chương 2)</p>
+              </div>
+            </div>
+
+            <div class="space-y-3 pt-2">
+              <div>
+                <div class="flex justify-between text-xs font-bold mb-1">
+                  <span class="text-slate-800">1. Deadline và bài tập nhóm dồn dập</span>
+                  <span class="text-amber-700">88% sinh viên</span>
+                </div>
+                <div class="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
+                  <div class="h-full bg-amber-500 rounded-full" style="width: 88%"></div>
+                </div>
+              </div>
+
+              <div>
+                <div class="flex justify-between text-xs font-bold mb-1">
+                  <span class="text-slate-800">2. Áp lực phải luôn hoàn hảo & kỳ vọng cao</span>
+                  <span class="text-amber-700">75% sinh viên</span>
+                </div>
+                <div class="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
+                  <div class="h-full bg-amber-500 rounded-full" style="width: 75%"></div>
+                </div>
+              </div>
+
+              <div>
+                <div class="flex justify-between text-xs font-bold mb-1">
+                  <span class="text-slate-800">3. Nỗi sợ bị tụt hậu so với bạn bè (FOMO)</span>
+                  <span class="text-amber-700">62% sinh viên</span>
+                </div>
+                <div class="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
+                  <div class="h-full bg-amber-500 rounded-full" style="width: 62%"></div>
+                </div>
+              </div>
+
+              <div>
+                <div class="flex justify-between text-xs font-bold mb-1">
+                  <span class="text-slate-800">4. Kỳ vọng từ gia đình & tương lai việc làm</span>
+                  <span class="text-amber-700">50% sinh viên</span>
+                </div>
+                <div class="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
+                  <div class="h-full bg-amber-500 rounded-full" style="width: 50%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Top Coping Methods (From Chapter 3 Pressure Valve) -->
+          <div class="glass-card rounded-3xl p-6 border border-teal-100 bg-white shadow-md space-y-4">
+            <div class="flex items-center space-x-3">
+              <div class="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center text-base shadow-sm">
+                <i class="fas fa-faucet-drip"></i>
+              </div>
+              <div>
+                <h3 class="text-base font-bold text-slate-900 font-serif-title">Phương Pháp Xả Van Áp Lực Ưa Thích</h3>
+                <p class="text-[11px] text-slate-500">Lựa chọn của sinh viên tại công cụ Chiếc Van Xả Áp Lực (Chương 3)</p>
+              </div>
+            </div>
+
+            <div class="space-y-3 pt-2">
+              <div class="p-3 rounded-2xl bg-teal-50 border border-teal-100 flex items-center justify-between">
+                <div class="flex items-center space-x-2.5">
+                  <span class="w-6 h-6 rounded-full bg-teal-600 text-white text-[11px] font-bold flex items-center justify-center">1</span>
+                  <span class="text-xs font-bold text-slate-800">Kỹ thuật hít thở sâu 4-7-8</span>
+                </div>
+                <span class="text-xs font-extrabold text-teal-700">42% lựa chọn</span>
+              </div>
+
+              <div class="p-3 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-between">
+                <div class="flex items-center space-x-2.5">
+                  <span class="w-6 h-6 rounded-full bg-emerald-600 text-white text-[11px] font-bold flex items-center justify-center">2</span>
+                  <span class="text-xs font-bold text-slate-800">Viết nhật ký xả van áp lực</span>
+                </div>
+                <span class="text-xs font-extrabold text-emerald-700">28% lựa chọn</span>
+              </div>
+
+              <div class="p-3 rounded-2xl bg-cyan-50 border border-cyan-100 flex items-center justify-between">
+                <div class="flex items-center space-x-2.5">
+                  <span class="w-6 h-6 rounded-full bg-cyan-600 text-white text-[11px] font-bold flex items-center justify-center">3</span>
+                  <span class="text-xs font-bold text-slate-800">Đi bộ ngắm cây xanh trong trường</span>
+                </div>
+                <span class="text-xs font-extrabold text-cyan-700">18% lựa chọn</span>
+              </div>
+
+              <div class="p-3 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-between">
+                <div class="flex items-center space-x-2.5">
+                  <span class="w-6 h-6 rounded-full bg-indigo-600 text-white text-[11px] font-bold flex items-center justify-center">4</span>
+                  <span class="text-xs font-bold text-slate-800">Ngắt kết nối mạng xã hội 1 giờ</span>
+                </div>
+                <span class="text-xs font-extrabold text-indigo-700">12% lựa chọn</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Student Monitoring & Control Table Section -->
+        <div class="glass-card rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-xl bg-white space-y-6">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <h3 class="text-xl font-bold text-slate-900 font-serif-title flex items-center space-x-2">
+                <i class="fas fa-list-check text-indigo-600"></i>
+                <span>Bảng Kiểm Soát Tiến Độ & Quản Lý Chi Tiết Sinh Viên</span>
+              </h3>
+              <p class="text-xs text-slate-500">Theo dõi thời gian thực kết quả test, tỷ lệ hoàn thành từng chương và hỗ trợ cá nhân hóa</p>
+            </div>
+
+            <!-- Search input -->
+            <div class="relative w-full md:w-72">
+              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 text-xs">
+                <i class="fas fa-search"></i>
+              </span>
+              <input type="text" 
+                     value="${searchQuery || ''}" 
+                     placeholder="Tìm kiếm sinh viên, email..." 
+                     oninput="APP.setAnalyticsSearch(this.value)"
+                     class="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-semibold">
+            </div>
+          </div>
+
+          <!-- Quick Filter Tabs -->
+          <div class="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-3">
+            <button onclick="APP.setAnalyticsFilter('all')" 
+                    class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${currentFilter === 'all' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}">
+              Tất cả (${stats.targetPool.length})
+            </button>
+            <button onclick="APP.setAnalyticsFilter('critical')" 
+                    class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${currentFilter === 'critical' ? 'bg-rose-600 text-white shadow-sm' : 'bg-rose-50 text-rose-700 hover:bg-rose-100'}">
+              🚨 Báo động đỏ (${stats.severity.critical})
+            </button>
+            <button onclick="APP.setAnalyticsFilter('moderate')" 
+                    class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${currentFilter === 'moderate' ? 'bg-orange-600 text-white shadow-sm' : 'bg-orange-50 text-orange-700 hover:bg-orange-100'}">
+              ⚠️ Kiệt sức TB (${stats.severity.moderate})
+            </button>
+            <button onclick="APP.setAnalyticsFilter('mild')" 
+                    class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${currentFilter === 'mild' ? 'bg-amber-500 text-white shadow-sm' : 'bg-amber-50 text-amber-700 hover:bg-amber-100'}">
+              🟡 Chớm mệt mỏi (${stats.severity.mild})
+            </button>
+            <button onclick="APP.setAnalyticsFilter('healthy')" 
+                    class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${currentFilter === 'healthy' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'}">
+              🟢 Ổn định (${stats.severity.healthy})
+            </button>
+            <button onclick="APP.setAnalyticsFilter('untested')" 
+                    class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${currentFilter === 'untested' ? 'bg-slate-700 text-white shadow-sm' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}">
+              ⚪ Chưa làm test (${stats.totalStudents - stats.testCount})
+            </button>
+          </div>
+
+          <!-- Students Table -->
+          <div class="overflow-x-auto border border-slate-200 rounded-2xl shadow-sm">
+            <table class="w-full text-left text-xs">
+              <thead class="bg-slate-50 text-slate-600 uppercase text-[10px] font-bold border-b border-slate-200 tracking-wider">
+                <tr>
+                  <th class="p-3.5">Sinh Viên</th>
+                  <th class="p-3.5">Điểm Test (SBI-9)</th>
+                  <th class="p-3.5">Tiến Độ Chung</th>
+                  <th class="p-3.5 text-center">4 Chương</th>
+                  <th class="p-3.5 text-center">11 Ngày</th>
+                  <th class="p-3.5 text-center">Thư</th>
+                  <th class="p-3.5 text-center">Streak</th>
+                  <th class="p-3.5 text-right">Thao Tác</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                ${filteredStudents.length === 0 ? `
+                  <tr>
+                    <td colspan="8" class="p-8 text-center text-slate-400 italic">
+                      Không tìm thấy sinh viên phù hợp với bộ lọc hiện tại.
+                    </td>
+                  </tr>
+                ` : filteredStudents.map(u => {
+                  let badge = { text: 'Chưa test', class: 'bg-slate-100 text-slate-500' };
+                  if (u.testScore !== null) {
+                    if (u.testScore >= 4.0) badge = { text: `${u.testScore.toFixed(2)} • Nguy cơ cao`, class: 'bg-rose-100 text-rose-800 font-bold border border-rose-200' };
+                    else if (u.testScore >= 3.0) badge = { text: `${u.testScore.toFixed(2)} • Kiệt sức TB`, class: 'bg-orange-100 text-orange-800 font-bold border border-orange-200' };
+                    else if (u.testScore >= 2.0) badge = { text: `${u.testScore.toFixed(2)} • Chớm mệt`, class: 'bg-amber-100 text-amber-800 font-bold border border-amber-200' };
+                    else badge = { text: `${u.testScore.toFixed(2)} • Ổn định`, class: 'bg-emerald-100 text-emerald-800 font-bold border border-emerald-200' };
+                  }
+
+                  return `
+                    <tr class="hover:bg-slate-50/90 transition-colors">
+                      <!-- Student Name & Email -->
+                      <td class="p-3.5">
+                        <div class="flex items-center space-x-3">
+                          <div class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center justify-center text-xs flex-shrink-0">
+                            ${u.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div class="font-bold text-slate-900">${u.name}</div>
+                            <div class="text-[11px] text-slate-500">${u.email}</div>
+                            <div class="text-[10px] text-emerald-700 font-semibold">${u.role}</div>
+                          </div>
+                        </div>
+                      </td>
+
+                      <!-- SBI-9 Score -->
+                      <td class="p-3.5">
+                        <span class="px-2.5 py-1 rounded-full text-[10px] ${badge.class}">
+                          ${badge.text}
+                        </span>
+                      </td>
+
+                      <!-- Overall Progress Bar -->
+                      <td class="p-3.5 w-36">
+                        <div class="space-y-1">
+                          <div class="flex justify-between text-[11px] font-bold">
+                            <span class="text-slate-700">${u.overallProgress || 0}%</span>
+                          </div>
+                          <div class="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
+                            <div class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-600" style="width: ${u.overallProgress || 0}%"></div>
+                          </div>
+                        </div>
+                      </td>
+
+                      <!-- 4 Chapters Mini Pills -->
+                      <td class="p-3.5 text-center">
+                        <div class="inline-flex space-x-1 text-[10px] font-bold">
+                          <span title="Chương 1: ${u.chapter1Progress || 0}%" class="w-5 h-5 rounded flex items-center justify-center ${(u.chapter1Progress || 0) >= 100 ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-400'}">1</span>
+                          <span title="Chương 2: ${u.chapter2Progress || 0}%" class="w-5 h-5 rounded flex items-center justify-center ${(u.chapter2Progress || 0) >= 100 ? 'bg-cyan-500 text-white' : (u.chapter2Progress || 0) > 0 ? 'bg-cyan-100 text-cyan-800' : 'bg-slate-100 text-slate-400'}">2</span>
+                          <span title="Chương 3: ${u.chapter3Progress || 0}%" class="w-5 h-5 rounded flex items-center justify-center ${(u.chapter3Progress || 0) >= 60 ? 'bg-amber-500 text-white' : (u.chapter3Progress || 0) > 0 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-400'}">3</span>
+                          <span title="Chương 4: ${u.chapter4Progress || 0}%" class="w-5 h-5 rounded flex items-center justify-center ${(u.chapter4Progress || 0) >= 50 ? 'bg-pink-500 text-white' : (u.chapter4Progress || 0) > 0 ? 'bg-pink-100 text-pink-800' : 'bg-slate-100 text-slate-400'}">4</span>
+                        </div>
+                      </td>
+
+                      <!-- 11 Days Challenge -->
+                      <td class="p-3.5 text-center font-bold text-pink-600">
+                        ${u.challengeCompletedDays || 0}/11
+                      </td>
+
+                      <!-- Future Letters -->
+                      <td class="p-3.5 text-center font-bold text-indigo-600">
+                        ${u.lettersCount || 0}
+                      </td>
+
+                      <!-- Streak -->
+                      <td class="p-3.5 text-center font-bold text-orange-600">
+                        <i class="fas fa-fire mr-0.5 text-xs"></i>${u.streakDays || 1}
+                      </td>
+
+                      <!-- Actions -->
+                      <td class="p-3.5 text-right space-x-1 whitespace-nowrap">
+                        <button onclick="APP.viewUserDetails('${u.id}')" title="Xem toàn bộ bài làm & bài viết của sinh viên" 
+                                class="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors">
+                          <i class="fas fa-eye"></i>
+                        </button>
+                        <button onclick="APP.openSendEncouragementModal('${u.id}')" title="Gửi lời nhắn động viên / hỗ trợ tâm lý" 
+                                class="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors">
+                          <i class="fas fa-paper-plane"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  // =========================================================================
+  // 16. ENCOURAGEMENT & COUNSELING MESSAGE MODAL
+  // =========================================================================
+  renderEncouragementModal: function(student) {
+    return `
+      <div class="glass-modal rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-rose-200 space-y-5 bg-white">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center text-base shadow-md shadow-rose-200">
+              <i class="fas fa-paper-plane"></i>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-slate-900 font-serif-title">Gửi Lời Nhắn Động Viên Sinh Viên</h3>
+              <p class="text-xs text-slate-500">Gửi trực tiếp vào hòm thư & thông báo của sinh viên</p>
+            </div>
+          </div>
+          <button onclick="APP.closeModal()" class="text-slate-400 hover:text-slate-700 p-1">
+            <i class="fas fa-times text-base"></i>
+          </button>
+        </div>
+
+        <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-700 flex items-center space-x-3">
+          <div class="w-8 h-8 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center text-xs flex-shrink-0">
+            ${student.name.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <div class="font-bold text-slate-900">${student.name}</div>
+            <div class="text-[11px] text-slate-500">${student.email} • ${student.role}</div>
+            ${student.testScore ? `<div class="text-[10px] font-bold text-rose-600 mt-0.5">Điểm SBI: ${student.testScore.toFixed(2)} / 5.00</div>` : ''}
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Mẫu Thông Điệp Gợi Ý</label>
+            <select id="msgTemplateSelect" onchange="
+              const templates = {
+                't1': { title: 'Thư động viên từ Phòng Tham vấn Tâm lý ULIS', body: 'Chào bạn, chúng mình nhận thấy gần đây bạn đang đối mặt với nhiều áp lực học tập và bài thi. Hãy nhớ rằng việc cảm thấy mệt mỏi là hoàn toàn bình thường, và bạn không đơn độc trên hành trình này. Bạn có thể dành chút thời gian ghé Chương 3 của Sổ tay để thực hành xả van áp lực nhé!' },
+                't2': { title: 'Nhắc nhở nhẹ nhàng: Chăm sóc bản thân hôm nay', body: 'Chào bạn, bạn đã đi được một chặng đường rất đáng tự hào cùng cuốn sổ tay Burn Bright. Hôm nay bạn đừng quên uống đủ nước và ngủ sớm một chút nhé!' },
+                't3': { title: 'Thư mời kết nối hỗ trợ tâm lý học đường', body: 'Chào bạn, Ban chủ nhiệm dự án From Burnout to Burn Bright luôn ở đây nếu bạn cần một người lắng nghe hoặc hỗ trợ tâm lý chuyên môn. Đừng ngần ngại liên hệ với chúng mình qua văn phòng tư vấn tâm lý ULIS nhé!' }
+              };
+              const sel = templates[this.value];
+              if (sel) {
+                document.getElementById('msgTitleInput').value = sel.title;
+                document.getElementById('msgBodyInput').value = sel.body;
+              }
+            " class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold bg-white focus:ring-2 focus:ring-rose-500">
+              <option value="t1">1. Động viên sinh viên đang gặp kiệt sức cao</option>
+              <option value="t2">2. Nhắc nhở rèn luyện Thử thách 11 Ngày</option>
+              <option value="t3">3. Thư mời kết nối tham vấn chuyên môn</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Tiêu Đề Lời Nhắn</label>
+            <input type="text" id="msgTitleInput" value="Thư động viên từ Phòng Tham vấn Tâm lý ULIS" 
+                   class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-rose-500">
+          </div>
+
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Nội Dung Lời Nhắn</label>
+            <textarea id="msgBodyInput" rows="4" 
+                      class="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs text-slate-700 leading-relaxed focus:outline-none focus:ring-2 focus:ring-rose-500">Chào bạn, chúng mình nhận thấy gần đây bạn đang đối mặt với nhiều áp lực học tập và bài thi. Hãy nhớ rằng việc cảm thấy mệt mỏi là hoàn toàn bình thường, và bạn không đơn độc trên hành trình này. Bạn có thể dành chút thời gian ghé Chương 3 của Sổ tay để thực hành xả van áp lực nhé!</textarea>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end space-x-2 pt-2 border-t border-slate-100">
+          <button onclick="APP.closeModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100">
+            Hủy Bỏ
+          </button>
+          <button onclick="
+            const t = document.getElementById('msgTitleInput')?.value?.trim();
+            const b = document.getElementById('msgBodyInput')?.value?.trim();
+            APP.sendEncouragementMessage('${student.id}', t, b);
+          " class="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md shadow-rose-200 flex items-center space-x-1.5">
+            <i class="fas fa-paper-plane"></i>
+            <span>Gửi Tin Nhắn Ngay</span>
+          </button>
         </div>
       </div>
     `;

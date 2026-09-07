@@ -19,7 +19,9 @@ window.APP = {
       timeLeft: 25 * 60,
       isRunning: false,
       sessionsCompleted: 0
-    }
+    },
+    adminAnalyticsFilter: 'all',
+    adminAnalyticsSearch: ''
   },
 
   // =========================================================================
@@ -87,6 +89,13 @@ window.APP = {
     if (!this.state.currentUser) {
       this.render();
       return;
+    }
+
+    if (pageId === 'admin') {
+      if (!this.state.currentUser || !window.SERVICES.Auth.isAdmin(this.state.currentUser)) {
+        this.showToast('Khu vực này chỉ dành riêng cho tài khoản Quản trị viên (Admin)!', 'warning');
+        return;
+      }
     }
 
     this.state.activePage = pageId;
@@ -994,7 +1003,219 @@ window.APP = {
   },
 
   // =========================================================================
-  // 12. ROOT RENDER FUNCTION
+  // 12. ADMIN ANALYTICS CONTROLLER & CHART ORCHESTRATION
+  // =========================================================================
+  setAnalyticsFilter: function(filter) {
+    this.state.adminAnalyticsFilter = filter;
+    this.render();
+  },
+
+  setAnalyticsSearch: function(val) {
+    this.state.adminAnalyticsSearch = val;
+    if (this.state.activePage === 'admin') {
+      this.render();
+    }
+  },
+
+  exportAnalyticsCsv: function() {
+    window.SERVICES.Analytics.exportCsvReport();
+    this.showToast('✓ Đã xuất file báo cáo Excel (CSV) thành công!', 'success');
+  },
+
+  openSendEncouragementModal: function(userId) {
+    const user = window.SERVICES.Auth.getUsers().find(u => u.id === userId);
+    if (!user) return;
+    const udata = window.SERVICES.Auth.getUserData(userId);
+    const student = {
+      ...user,
+      testScore: udata.progress?.ch1?.testResult?.score || null
+    };
+    const modal = document.getElementById('modalContainer');
+    if (!modal) return;
+    modal.innerHTML = COMPONENTS.renderEncouragementModal(student);
+    modal.classList.remove('hidden');
+  },
+
+  sendEncouragementMessage: function(userId, title, message) {
+    const res = window.SERVICES.Analytics.sendSupportMessage(userId, title, message);
+    if (res.success) {
+      this.closeModal();
+      this.showToast('✓ Đã gửi thông điệp động viên đến sinh viên!', 'success');
+    } else {
+      this.showToast(res.message || 'Lỗi gửi tin nhắn', 'warning');
+    }
+  },
+
+  initAdminCharts: function(stats) {
+    if (typeof Chart === 'undefined') {
+      console.warn("Chart.js is not loaded yet");
+      return;
+    }
+
+    if (window._adminChartInstances) {
+      window._adminChartInstances.forEach(c => {
+        try { c.destroy(); } catch (e) {}
+      });
+    }
+    window._adminChartInstances = [];
+
+    // 1. Burnout Severity Donut Chart
+    const ctx1 = document.getElementById('chartBurnoutSeverity')?.getContext('2d');
+    if (ctx1) {
+      const c1 = new Chart(ctx1, {
+        type: 'doughnut',
+        data: {
+          labels: [
+            'Ổn định / Khỏe mạnh (<2.0)',
+            'Chớm mệt mỏi (2.0-2.9)',
+            'Kiệt sức trung bình (3.0-3.9)',
+            'Báo động đỏ (≥4.0)'
+          ],
+          datasets: [{
+            data: [
+              stats.severity.healthy,
+              stats.severity.mild,
+              stats.severity.moderate,
+              stats.severity.critical
+            ],
+            backgroundColor: ['#10b981', '#f59e0b', '#f97316', '#f43f5e'],
+            hoverOffset: 6,
+            borderWidth: 2,
+            borderColor: '#ffffff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { boxWidth: 12, font: { family: 'Nunito', size: 11, weight: 'bold' } } },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  const total = stats.testCount || 1;
+                  const val = context.raw || 0;
+                  const pct = Math.round((val / total) * 100);
+                  return ` ${context.label}: ${val} sinh viên (${pct}%)`;
+                }
+              }
+            }
+          },
+          cutout: '62%'
+        }
+      });
+      window._adminChartInstances.push(c1);
+    }
+
+    // 2. Chapter Funnel Progress Bar Chart
+    const ctx2 = document.getElementById('chartChapterFunnel')?.getContext('2d');
+    if (ctx2) {
+      const c2 = new Chart(ctx2, {
+        type: 'bar',
+        data: {
+          labels: ['C1: Nhận diện', 'C2: Giải mã', 'C3: Xả van', 'C4: Tái tạo'],
+          datasets: [
+            {
+              label: 'Tiến độ hoàn thành TB (%)',
+              data: [
+                stats.chapterStats.ch1.avgPercent,
+                stats.chapterStats.ch2.avgPercent,
+                stats.chapterStats.ch3.avgPercent,
+                stats.chapterStats.ch4.avgPercent
+              ],
+              backgroundColor: ['#10b981', '#06b6d4', '#f59e0b', '#ec4899'],
+              borderRadius: 8
+            },
+            {
+              label: 'Sinh viên hoàn tất',
+              data: [
+                stats.chapterStats.ch1.completedCount,
+                stats.chapterStats.ch2.completedCount,
+                stats.chapterStats.ch3.completedCount,
+                stats.chapterStats.ch4.completedCount
+              ],
+              backgroundColor: ['#047857', '#0891b2', '#d97706', '#be185d'],
+              borderRadius: 8
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { boxWidth: 12, font: { family: 'Nunito', size: 11 } } }
+          },
+          scales: {
+            y: { beginAtZero: true, grid: { color: '#f1f5f9' } },
+            x: { grid: { display: false } }
+          }
+        }
+      });
+      window._adminChartInstances.push(c2);
+    }
+
+    // 3. 11-Day Challenge Retention Chart
+    const ctx3 = document.getElementById('chartChallenge11Days')?.getContext('2d');
+    if (ctx3) {
+      const c3 = new Chart(ctx3, {
+        type: 'bar',
+        data: {
+          labels: stats.challengeStats.map(d => `Ngày ${d.day}`),
+          datasets: [{
+            label: 'Số sinh viên hoàn thành',
+            data: stats.challengeStats.map(d => d.count),
+            backgroundColor: '#ec4899',
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            y: { beginAtZero: true, grid: { color: '#f1f5f9' } },
+            x: { grid: { display: false } }
+          }
+        }
+      });
+      window._adminChartInstances.push(c3);
+    }
+
+    // 4. Audience Distribution Doughnut Chart
+    const ctx4 = document.getElementById('chartAudienceDist')?.getContext('2d');
+    if (ctx4) {
+      const c4 = new Chart(ctx4, {
+        type: 'doughnut',
+        data: {
+          labels: ['Sinh viên ULIS', 'ĐHQGHN khác', 'Đại học khác', 'Khách / Khác'],
+          datasets: [{
+            data: [
+              stats.roleStats.ulis,
+              stats.roleStats.vnu,
+              stats.roleStats.otherUni,
+              stats.roleStats.guest
+            ],
+            backgroundColor: ['#059669', '#3b82f6', '#8b5cf6', '#94a3b8'],
+            borderWidth: 2,
+            borderColor: '#ffffff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { boxWidth: 12, font: { family: 'Nunito', size: 11, weight: 'bold' } } }
+          },
+          cutout: '62%'
+        }
+      });
+      window._adminChartInstances.push(c4);
+    }
+  },
+
+  // =========================================================================
+  // 13. ROOT RENDER FUNCTION
   // =========================================================================
   render: function() {
     const appEl = document.getElementById('app');
@@ -1045,6 +1266,18 @@ window.APP = {
         break;
       case 'dashboard':
         contentHtml = COMPONENTS.renderDashboardPage(this.state.currentUser, userData, streakInfo);
+        break;
+      case 'admin':
+        if (!window.SERVICES.Auth.isAdmin(this.state.currentUser)) {
+          this.state.activePage = 'home';
+          contentHtml = COMPONENTS.renderHomePage(this.state.currentUser, overall, streakInfo);
+        } else {
+          const stats = window.SERVICES.Analytics.getOverviewStats();
+          contentHtml = COMPONENTS.renderAdminAnalyticsPage(stats, this.state.adminAnalyticsFilter, this.state.adminAnalyticsSearch);
+          setTimeout(() => {
+            this.initAdminCharts(stats);
+          }, 60);
+        }
         break;
       default:
         contentHtml = COMPONENTS.renderHomePage(this.state.currentUser, overall, streakInfo);
