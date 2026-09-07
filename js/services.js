@@ -219,6 +219,65 @@ window.SERVICES = {
         emailLogs: [],
         sentEmailCooldowns: {}
       };
+    },
+
+    getAllUsersWithStats: function() {
+      const users = this.getUsers();
+      return users.map(u => {
+        const udata = this.getUserData(u.id);
+        const testScore = udata.progress?.ch1?.testResult?.score || null;
+        const lettersCount = (udata.futureLetters || []).length;
+        const streakDays = udata.streak?.count || 1;
+        const overall = window.SERVICES.Progress ? window.SERVICES.Progress.getOverallProgress(u.id) : 0;
+        return {
+          ...u,
+          testScore,
+          lettersCount,
+          streakDays,
+          overallProgress: overall
+        };
+      });
+    },
+
+    deleteUser: function(userId) {
+      let users = this.getUsers();
+      users = users.filter(u => u.id !== userId);
+      this.saveUsers(users);
+      localStorage.removeItem("bb_userdata_" + userId);
+      return { success: true };
+    },
+
+    exportDatabaseJson: function() {
+      const users = this.getAllUsersWithStats();
+      const exportData = {
+        exportedAt: new Date().toISOString(),
+        system: "From Burnout to Burn Bright (ULIS - VNU)",
+        databaseType: "Client-side LocalStorage Document DB",
+        totalAccounts: users.length,
+        accounts: users.map(u => {
+          return {
+            id: u.id,
+            name: u.name,
+            email: u.email,
+            role: u.role,
+            createdAt: u.createdAt,
+            stats: {
+              burnoutScore: u.testScore,
+              streakDays: u.streakDays,
+              lettersCount: u.lettersCount,
+              overallProgress: u.overallProgress
+            },
+            fullUserData: this.getUserData(u.id)
+          };
+        })
+      };
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `ulis_burn_bright_database_${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
     }
   },
 
@@ -847,6 +906,70 @@ window.SERVICES = {
         const matchKeywords = (item.keywords || []).some(k => k.toLowerCase().includes(clean));
         return matchTitle || matchSnippet || matchKeywords;
       });
+    }
+  },
+
+  // ==========================================
+  // 9. SUPABASE CLOUD DATABASE SERVICE
+  // ==========================================
+  Supabase: {
+    STORAGE_KEY: "bb_supabase_config",
+
+    getConfig: function() {
+      try {
+        const data = localStorage.getItem(this.STORAGE_KEY);
+        if (data) return JSON.parse(data);
+      } catch (e) {}
+      return {
+        url: "",
+        anonKey: "",
+        isConnected: false,
+        lastConnected: null
+      };
+    },
+
+    saveConfig: function(cfg) {
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(cfg));
+    },
+
+    getClient: function() {
+      const cfg = this.getConfig();
+      if (cfg.url && cfg.anonKey && window.supabase && window.supabase.createClient) {
+        return window.supabase.createClient(cfg.url, cfg.anonKey);
+      }
+      return null;
+    },
+
+    testConnection: async function(url, anonKey) {
+      if (!url || !anonKey) {
+        return { success: false, message: "Vui lòng nhập đầy đủ Supabase Project URL và Anon Key." };
+      }
+      try {
+        const cleanUrl = url.trim().replace(/\/$/, "");
+        const cleanKey = anonKey.trim();
+
+        const res = await fetch(`${cleanUrl}/rest/v1/`, {
+          headers: {
+            "apikey": cleanKey,
+            "Authorization": `Bearer ${cleanKey}`
+          }
+        });
+
+        if (res.ok || res.status === 200) {
+          const cfg = {
+            url: cleanUrl,
+            anonKey: cleanKey,
+            isConnected: true,
+            lastConnected: new Date().toISOString()
+          };
+          this.saveConfig(cfg);
+          return { success: true, message: "Kết nối Cloud Supabase Database thành công!" };
+        } else {
+          return { success: false, message: `Lỗi kết nối từ Supabase: Mã phản hồi ${res.status}` };
+        }
+      } catch (e) {
+        return { success: false, message: `Không thể kết nối đến máy chủ Supabase: ${e.message}` };
+      }
     }
   }
 };

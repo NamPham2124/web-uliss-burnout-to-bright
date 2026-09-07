@@ -279,6 +279,13 @@ window.COMPONENTS = {
                 <i class="fas fa-search"></i>
               </button>
 
+              <!-- Database & Accounts Viewer Button -->
+              <button onclick="APP.openDatabaseModal()" title="Cơ Sở Dữ Liệu & Danh Sách Tài Khoản Đã Đăng Ký" 
+                      class="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-all font-bold text-xs shadow-sm">
+                <i class="fas fa-database text-indigo-600"></i>
+                <span class="hidden xl:inline">CSDL Sinh Viên</span>
+              </button>
+
               <!-- Streak Button -->
               <button onclick="APP.openStreakModal()" title="Chuỗi Streak hàng ngày" 
                       class="flex items-center space-x-1 px-2.5 py-1 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-600 border border-orange-200 transition-all font-bold text-xs">
@@ -1506,6 +1513,257 @@ window.COMPONENTS = {
             <i class="fas fa-arrow-right"></i>
           </button>
         </div>
+      </div>
+    `;
+  },
+
+  // =========================================================================
+  // 13. DATABASE & REGISTERED ACCOUNTS VIEWER MODAL
+  // =========================================================================
+  renderDatabaseModal: function(users, activeTab = 'accounts', supabaseCfg = {}) {
+    const totalAccounts = users.length;
+    const completedTestsCount = users.filter(u => u.testScore !== null).length;
+    const totalLetters = users.reduce((acc, u) => acc + (u.lettersCount || 0), 0);
+
+    return `
+      <div class="glass-modal rounded-3xl p-6 sm:p-8 max-w-4xl w-full shadow-2xl border border-indigo-200 space-y-6 max-h-[90vh] overflow-y-auto">
+        <!-- Header -->
+        <div class="flex items-center justify-between pb-4 border-b border-slate-100">
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-lg shadow-sm">
+              <i class="fas fa-database"></i>
+            </div>
+            <div>
+              <h3 class="text-lg font-bold text-slate-900 font-serif-title">Cơ Sở Dữ Liệu & Danh Sách Tài Khoản Đăng Ký</h3>
+              <p class="text-xs text-slate-500">Quản lý toàn bộ sinh viên, điểm số Burnout, thư tương lai & kết nối Supabase</p>
+            </div>
+          </div>
+          <button onclick="APP.closeModal()" class="text-slate-400 hover:text-slate-600 text-lg p-1">×</button>
+        </div>
+
+        <!-- Mode Toggle Tabs -->
+        <div class="flex rounded-2xl bg-slate-100 p-1 border border-slate-200">
+          <button onclick="APP.switchDatabaseTab('accounts')" 
+                  class="flex-1 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'accounts' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}">
+            <i class="fas fa-users mr-1.5"></i> Danh Sách Tài Khoản (${totalAccounts})
+          </button>
+          <button onclick="APP.switchDatabaseTab('supabase')" 
+                  class="flex-1 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'supabase' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}">
+            <i class="fas fa-cloud mr-1.5"></i> Kết Nối Supabase Cloud
+          </button>
+        </div>
+
+        <!-- TAB 1: ACCOUNTS LIST -->
+        ${activeTab === 'accounts' ? `
+          <div class="space-y-4">
+            <!-- Stats Bar -->
+            <div class="grid grid-cols-3 gap-3 text-center">
+              <div class="p-3 rounded-2xl bg-indigo-50/70 border border-indigo-100 space-y-0.5">
+                <span class="text-[10px] font-bold uppercase text-indigo-600">Tổng tài khoản</span>
+                <div class="text-xl font-extrabold text-indigo-900 font-serif-title">${totalAccounts}</div>
+              </div>
+              <div class="p-3 rounded-2xl bg-emerald-50/70 border border-emerald-100 space-y-0.5">
+                <span class="text-[10px] font-bold uppercase text-emerald-600">Bài Test Burnout</span>
+                <div class="text-xl font-extrabold text-emerald-900 font-serif-title">${completedTestsCount} đã làm</div>
+              </div>
+              <div class="p-3 rounded-2xl bg-pink-50/70 border border-pink-100 space-y-0.5">
+                <span class="text-[10px] font-bold uppercase text-pink-600">Thư Tương Lai</span>
+                <div class="text-xl font-extrabold text-pink-900 font-serif-title">${totalLetters} lá thư</div>
+              </div>
+            </div>
+
+            <!-- Table of Registered Users -->
+            <div class="overflow-x-auto rounded-2xl border border-slate-200 shadow-sm">
+              <table class="min-w-full divide-y divide-slate-200 text-xs text-left">
+                <thead class="bg-slate-50 font-bold text-slate-700 uppercase tracking-wider text-[10px]">
+                  <tr>
+                    <th class="px-3.5 py-3">Sinh Viên / Người Dùng</th>
+                    <th class="px-3.5 py-3">Vai Trò</th>
+                    <th class="px-3.5 py-3">Ngày Tạo</th>
+                    <th class="px-3.5 py-3">Điểm Burnout</th>
+                    <th class="px-3.5 py-3">Tiến Độ</th>
+                    <th class="px-3.5 py-3 text-right">Thao Tác</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 bg-white">
+                  ${users.map(u => `
+                    <tr class="hover:bg-slate-50 transition-colors">
+                      <td class="px-3.5 py-3">
+                        <div class="flex items-center space-x-2.5">
+                          <div class="w-7 h-7 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center">
+                            ${u.name ? u.name.charAt(0).toUpperCase() : 'U'}
+                          </div>
+                          <div>
+                            <div class="font-bold text-slate-900">${u.name}</div>
+                            <div class="text-[10px] text-slate-500">${u.email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td class="px-3.5 py-3">
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${u.role === 'Khách trải nghiệm' ? 'bg-slate-100 text-slate-600' : 'bg-emerald-100 text-emerald-800'}">
+                          ${u.role || 'Sinh viên ULIS'}
+                        </span>
+                      </td>
+                      <td class="px-3.5 py-3 text-slate-500">
+                        ${new Date(u.createdAt).toLocaleDateString('vi-VN')}
+                      </td>
+                      <td class="px-3.5 py-3">
+                        ${u.testScore !== null ? `
+                          <span class="font-extrabold text-emerald-600">${u.testScore.toFixed(2)}/5.0</span>
+                        ` : `
+                          <span class="text-slate-400 italic">Chưa test</span>
+                        `}
+                      </td>
+                      <td class="px-3.5 py-3">
+                        <div class="flex items-center space-x-2">
+                          <div class="w-14 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                            <div class="h-full bg-emerald-500 rounded-full" style="width: ${u.overallProgress}%"></div>
+                          </div>
+                          <span class="text-[10px] font-bold text-slate-600">${u.overallProgress}%</span>
+                        </div>
+                      </td>
+                      <td class="px-3.5 py-3 text-right space-x-1">
+                        <button onclick="APP.viewUserDetails('${u.id}')" title="Xem toàn bộ bài làm & thư" 
+                                class="px-2 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[11px] font-bold transition-colors">
+                          <i class="fas fa-eye"></i> Chi tiết
+                        </button>
+                        ${u.id !== 'usr_guest' ? `
+                          <button onclick="APP.deleteUserAccount('${u.id}', '${u.name}')" title="Xóa tài khoản này" 
+                                  class="px-2 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-[11px] font-bold transition-colors">
+                            <i class="fas fa-trash-alt"></i>
+                          </button>
+                        ` : ''}
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Export & Action Controls -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+              <span class="text-[11px] text-slate-500">
+                <i class="fas fa-shield-alt text-emerald-600 mr-1"></i> Dữ liệu được lưu an toàn trong cơ sở dữ liệu trình duyệt và sẵn sàng đồng bộ.
+              </span>
+              <button onclick="APP.exportDatabaseJson()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-md transition-all flex items-center space-x-1.5 self-start sm:self-auto">
+                <i class="fas fa-file-export"></i>
+                <span>Xuất Toàn Bộ CSDL (JSON)</span>
+              </button>
+            </div>
+          </div>
+        ` : `
+          <!-- TAB 2: SUPABASE CLOUD CONNECTION -->
+          <div class="space-y-5">
+            <div class="p-4 rounded-2xl bg-indigo-50/70 border border-indigo-200 text-xs text-indigo-900 leading-relaxed flex items-start space-x-3">
+              <i class="fas fa-cloud-arrow-up text-indigo-600 text-lg mt-0.5"></i>
+              <div>
+                <strong>Cơ chế đồng bộ đám mây Supabase:</strong> Khi bạn nhập Supabase Project URL và Public Anon Key, dữ liệu tài khoản và bài làm của sinh viên sẽ tự động được gửi lên máy chủ Supabase Cloud PostgreSQL để lưu trữ vĩnh viễn và đồng bộ đa thiết bị.
+              </div>
+            </div>
+
+            <!-- Supabase Credentials Form -->
+            <div class="space-y-4 p-5 rounded-2xl bg-white border border-slate-200 shadow-sm">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Supabase Project URL</label>
+                <input type="url" id="sbUrlInput" value="${supabaseCfg.url || ''}" placeholder="https://your-project.supabase.co" 
+                       class="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Supabase Public Anon Key</label>
+                <input type="text" id="sbKeyInput" value="${supabaseCfg.anonKey || ''}" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." 
+                       class="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono">
+              </div>
+
+              <div class="flex items-center justify-between pt-2">
+                <div class="text-[11px] font-bold ${supabaseCfg.isConnected ? 'text-emerald-600' : 'text-slate-500'} flex items-center space-x-1.5">
+                  <span class="w-2.5 h-2.5 rounded-full ${supabaseCfg.isConnected ? 'bg-emerald-500' : 'bg-slate-300'}"></span>
+                  <span>${supabaseCfg.isConnected ? 'Đã kết nối Cloud Supabase' : 'Chưa kết nối Cloud (Đang dùng LocalStorage)'}</span>
+                </div>
+
+                <button onclick="APP.testSupabaseConnection()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 py-2 rounded-xl text-xs shadow-md transition-all flex items-center space-x-1.5">
+                  <i class="fas fa-plug"></i>
+                  <span>Kiểm Tra & Lưu Cấu Hình</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Sample SQL Schema -->
+            <div class="space-y-2">
+              <label class="block text-xs font-bold text-slate-700 uppercase">Mã lệnh SQL tạo bảng mẫu trên Supabase:</label>
+              <pre class="p-3.5 rounded-2xl bg-slate-900 text-emerald-400 text-[11px] font-mono overflow-x-auto leading-relaxed">
+-- Bảng tài khoản người dùng
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  email TEXT UNIQUE NOT NULL,
+  role TEXT DEFAULT 'Sinh viên ULIS',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Bảng lưu kết quả test Burnout và thư tương lai
+CREATE TABLE IF NOT EXISTS user_progress (
+  user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+  burnout_score NUMERIC,
+  future_letters JSONB,
+  challenge_progress JSONB,
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  PRIMARY KEY(user_id)
+);</pre>
+            </div>
+          </div>
+        `}
+      </div>
+    `;
+  },
+
+  renderUserDetailsModal: function(user, udata) {
+    const p = udata.progress || {};
+    const test = p.ch1?.testResult;
+    const letters = udata.futureLetters || [];
+    const ch4Days = Object.values(p.ch4?.challenge11Days || {}).filter(c => c.completed).length;
+
+    return `
+      <div class="glass-modal rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-indigo-200 space-y-4 max-h-[85vh] overflow-y-auto">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+          <div class="flex items-center space-x-2.5">
+            <div class="w-8 h-8 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center">
+              ${user.name.charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <h3 class="text-sm font-bold text-slate-900">${user.name}</h3>
+              <p class="text-[11px] text-slate-500">${user.email} • ${user.role}</p>
+            </div>
+          </div>
+          <button onclick="APP.openDatabaseModal()" class="text-slate-400 hover:text-slate-600 text-sm">✕</button>
+        </div>
+
+        <div class="space-y-3 text-xs">
+          <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+            <strong>Điểm Test Burnout (Chương 1):</strong>
+            <div>${test ? `${test.score.toFixed(2)}/5.00 (Làm lúc: ${new Date(test.timestamp).toLocaleString('vi-VN')})` : 'Chưa thực hiện test'}</div>
+          </div>
+
+          <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+            <strong>Thử thách 11 Ngày (Chương 4):</strong>
+            <div>Đã hoàn thành: <strong>${ch4Days}/11 Ngày</strong></div>
+          </div>
+
+          <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
+            <strong>Thư Tương Lai Niêm Phong (Chương 4):</strong>
+            <div>Số lượng thư: <strong>${letters.length} bức thư</strong></div>
+            ${letters.map(l => `
+              <div class="p-2 rounded-lg bg-white border border-pink-200 text-[11px] mt-1">
+                <div>Gửi: <strong>${l.recipient}</strong> (Ngày hẹn: ${l.unlockDate})</div>
+                <div class="text-slate-500 line-clamp-1 italic">"${l.content}"</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <button onclick="APP.openDatabaseModal()" class="w-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-2 rounded-xl text-xs transition-colors">
+          Quay lại Bảng CSDL
+        </button>
       </div>
     `;
   }

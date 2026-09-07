@@ -804,6 +804,67 @@ window.APP = {
     `).join('');
   },
 
+  // =========================================================================
+  // 11. DATABASE & REGISTERED USERS MANAGEMENT
+  // =========================================================================
+  openDatabaseModal: function(tab = 'accounts') {
+    const modal = document.getElementById('modalContainer');
+    if (!modal) return;
+
+    const users = window.SERVICES.Auth.getAllUsersWithStats();
+    const sbCfg = window.SERVICES.Supabase.getConfig();
+
+    modal.innerHTML = COMPONENTS.renderDatabaseModal(users, tab, sbCfg);
+    modal.classList.remove('hidden');
+  },
+
+  switchDatabaseTab: function(tab) {
+    this.openDatabaseModal(tab);
+  },
+
+  viewUserDetails: function(userId) {
+    const modal = document.getElementById('modalContainer');
+    if (!modal) return;
+
+    const users = window.SERVICES.Auth.getUsers();
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+
+    const udata = window.SERVICES.Auth.getUserData(userId);
+    modal.innerHTML = COMPONENTS.renderUserDetailsModal(user, udata);
+  },
+
+  deleteUserAccount: function(userId, userName) {
+    if (!confirm(`Bạn có chắc chắn muốn xóa tài khoản "${userName}" và toàn bộ bài làm/thư của sinh viên này khỏi CSDL?`)) {
+      return;
+    }
+
+    window.SERVICES.Auth.deleteUser(userId);
+    this.showToast(`Đã xóa tài khoản ${userName} khỏi CSDL.`, 'info');
+    this.openDatabaseModal('accounts');
+    this.render();
+  },
+
+  exportDatabaseJson: function() {
+    window.SERVICES.Auth.exportDatabaseJson();
+    this.showToast('✓ Đã xuất toàn bộ Cơ Sở Dữ Liệu sinh viên thành file JSON!', 'success');
+  },
+
+  testSupabaseConnection: async function() {
+    const url = document.getElementById('sbUrlInput')?.value;
+    const key = document.getElementById('sbKeyInput')?.value;
+
+    this.showToast('Đang kiểm tra kết nối đến Supabase Cloud...', 'info');
+    const res = await window.SERVICES.Supabase.testConnection(url, key);
+
+    if (res.success) {
+      this.showToast(res.message, 'success');
+    } else {
+      this.showToast(res.message, 'warning');
+    }
+    this.openDatabaseModal('supabase');
+  },
+
   closeModal: function() {
     const modal = document.getElementById('modalContainer');
     if (modal) modal.classList.add('hidden');
