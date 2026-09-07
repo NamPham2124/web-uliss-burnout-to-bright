@@ -390,23 +390,27 @@ window.SERVICES = {
         return p.ch1?.testResult ? 100 : 0;
       }
       if (chapterId === 2 || chapterId === "ch2") {
-        const readCount = (p.ch2?.readSections || []).length;
-        const icebergModified = (p.ch2?.iceberg?.floating || []).length >= 4;
-        let percent = Math.min(100, Math.round((readCount / 3) * 70) + (icebergModified ? 30 : 0));
-        return percent;
+        const memoryDone = (p.ch2?.memoryReflection && p.ch2.memoryReflection.trim().length > 0) ? 50 : 0;
+        const defaultFloat = ["Deadline dồn dập", "Mất ngủ mệt mỏi", "Uể oải mỗi sáng", "Dễ cáu gắt"];
+        const defaultSub = ["Kỳ vọng từ gia đình", "Nỗi sợ bị tụt hậu", "Áp lực phải hoàn hảo", "Chưa biết từ chối"];
+        const curFloat = p.ch2?.iceberg?.floating || [];
+        const curSub = p.ch2?.iceberg?.submerged || [];
+        const floatChanged = curFloat.length !== defaultFloat.length || curFloat.some((val, idx) => val !== defaultFloat[idx]);
+        const subChanged = curSub.length !== defaultSub.length || curSub.some((val, idx) => val !== defaultSub[idx]);
+        const icebergDone = (p.ch2?.icebergModified || floatChanged || subChanged) ? 50 : 0;
+        return Math.min(100, memoryDone + icebergDone);
       }
       if (chapterId === 3 || chapterId === "ch3") {
-        const dndDone = p.ch3?.dndState?.isCompleted ? 50 : 0;
-        const pomoOrEnergy = (p.ch3?.pomodoroSessions > 0 || Object.keys(p.ch3?.energyMap || {}).length > 0) ? 50 : 0;
-        return Math.min(100, dndDone + pomoOrEnergy);
+        const valveDone = (p.ch3?.waterLevel || p.ch3?.valveMethod) ? 30 : 0;
+        const dndDone = p.ch3?.dndState?.isCompleted ? 40 : ((p.ch3?.dndState?.score || 0) >= 2 ? 20 : 0);
+        const pomoOrEnergy = (p.ch3?.pomodoroSessions > 0 || Object.keys(p.ch3?.energyMap || {}).length > 0) ? 30 : 0;
+        return Math.min(100, valveDone + dndDone + pomoOrEnergy);
       }
       if (chapterId === 4 || chapterId === "ch4") {
-        const videoDone = p.ch4?.videoCompleted ? 20 : 0;
-        const challengeDone = Object.values(p.ch4?.challenge11Days || {}).filter(c => c.completed).length;
-        const challengePercent = Math.round((challengeDone / 11) * 40);
-        const flowerDone = Object.values(p.ch4?.valueFlower || {}).filter(v => v && v.trim()).length >= 3 ? 20 : 0;
-        const letterDone = (userData.futureLetters || []).length > 0 ? 20 : 0;
-        return Math.min(100, videoDone + challengePercent + flowerDone + letterDone);
+        const challengeDone = Object.values(p.ch4?.challenge11Days || {}).filter(c => c && c.completed).length;
+        const challengePercent = Math.round((challengeDone / 11) * 70);
+        const letterDone = (userData.futureLetters || []).length > 0 ? 30 : 0;
+        return Math.min(100, challengePercent + letterDone);
       }
       return 0;
     },

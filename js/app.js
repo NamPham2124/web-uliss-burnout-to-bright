@@ -427,6 +427,7 @@ window.APP = {
     };
 
     userData.progress.ch2.iceberg[type].push(val);
+    userData.progress.ch2.icebergModified = true;
     userData.progress.ch2.completed = true;
     window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
 
@@ -442,6 +443,7 @@ window.APP = {
     if (!userData.progress.ch2.iceberg) return;
 
     userData.progress.ch2.iceberg[type] = userData.progress.ch2.iceberg[type].filter(i => i !== itemText);
+    userData.progress.ch2.icebergModified = true;
     window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
     this.render();
   },
