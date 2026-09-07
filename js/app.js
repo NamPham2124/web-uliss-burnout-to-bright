@@ -299,11 +299,12 @@ window.APP = {
   calculateBurnoutScore: function(e) {
     if (e && e.preventDefault) e.preventDefault();
     const form = (e && e.target && e.target.tagName === 'FORM') ? e.target : document.getElementById('burnoutForm');
+    const questions = window.APP_DATA.chapters[0].quiz.questions;
     let totalScore = 0;
     let count = 0;
     const answers = [];
 
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < questions.length; i++) {
       const selected = form ? form.querySelector(`input[name="q_${i}"]:checked`) : document.querySelector(`input[name="q_${i}"]:checked`);
       if (selected && selected.value) {
         const num = parseInt(selected.value);
@@ -313,12 +314,12 @@ window.APP = {
       }
     }
 
-    if (count < 12) {
-      this.showToast('Vui lòng trả lời đầy đủ tất cả 12 câu hỏi.', 'warning');
+    if (count < questions.length) {
+      this.showToast(`Vui lòng trả lời đầy đủ tất cả ${questions.length} câu hỏi.`, 'warning');
       return;
     }
 
-    const avgScore = totalScore / 12;
+    const avgScore = totalScore / questions.length;
     const testResult = {
       score: avgScore,
       answers: answers,
@@ -333,8 +334,8 @@ window.APP = {
       window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
 
       // Record Streak Activity
-      window.SERVICES.Streak.recordActivity(this.state.currentUser.id, "Hoàn thành Bài Test Burnout");
-      this.showToast('Đã lưu kết quả đánh giá Burnout chuẩn hóa!', 'success');
+      window.SERVICES.Streak.recordActivity(this.state.currentUser.id, "Hoàn thành Bài Test SBI 9 Câu");
+      this.showToast('Đã lưu kết quả đánh giá Academic Burnout chuẩn hóa!', 'success');
     }
 
     const container = document.getElementById('testResultContainer');
@@ -345,9 +346,67 @@ window.APP = {
     }
   },
 
+  // Handlers for "Chiếc Van Xả Áp Lực" (Chapter 3)
+  setWaterLevel: function(percent, label, color) {
+    const fillEl = document.getElementById('waterTankFill');
+    const textEl = document.getElementById('waterLevelPercentText');
+    const labelEl = document.getElementById('waterLevelLabelText');
+
+    if (fillEl) {
+      fillEl.style.width = percent + '%';
+      fillEl.style.backgroundColor = color;
+    }
+    if (textEl) textEl.innerText = percent + '%';
+    if (labelEl) labelEl.innerText = label;
+
+    if (this.state.currentUser) {
+      const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
+      userData.progress.ch3.waterLevel = { percent, label, timestamp: new Date().toISOString() };
+      window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
+    }
+    this.showToast(`Đã ghi nhận mức nước cảm xúc: ${percent}% — ${label}`, 'info');
+  },
+
+  saveValveReleaseMethod: function(methodName) {
+    if (this.state.currentUser) {
+      const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
+      userData.progress.ch3.valveMethod = methodName;
+      window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
+      window.SERVICES.Streak.recordActivity(this.state.currentUser.id, "Thực hiện Xả Áp Lực");
+    }
+    this.showToast(`Đã chọn phương thức mở van: ${methodName}. Hãy dành vài phút thả lỏng nhé!`, 'success');
+  },
+
+  toggleGroundingCheck: function(senseNum) {
+    const cb = document.getElementById(`grounding_${senseNum}`);
+    if (cb && cb.checked) {
+      this.showToast(`✓ Tuyệt vời! Đã hoàn thành bước nối đất ${senseNum}.`, 'success');
+      if (this.state.currentUser) {
+        window.SERVICES.Streak.recordActivity(this.state.currentUser.id, "Kỹ thuật Nối Đất 5-4-3-2-1");
+      }
+    }
+  },
+
   // =========================================================================
-  // 7. CHAPTER 2 HANDLERS (Iceberg Model Tool)
+  // 7. CHAPTER 2 HANDLERS (Iceberg Model Tool & Memory Reflection)
   // =========================================================================
+  saveMemoryReflection: function() {
+    if (!this.state.currentUser) return;
+    const input = document.getElementById('memoryExerciseInput');
+    const val = input?.value?.trim();
+    if (!val) {
+      this.showToast('Vui lòng chia sẻ đôi điều về ngày mệt mỏi ấy nhé.', 'warning');
+      return;
+    }
+    const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
+    userData.progress.ch2 = userData.progress.ch2 || {};
+    userData.progress.ch2.memoryReflection = val;
+    userData.progress.ch2.completed = true;
+    window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
+    window.SERVICES.Streak.recordActivity(this.state.currentUser.id, "Chia sẻ cảm xúc 'Một ngày kiệt sức nhất'");
+    this.showToast('Đã lưu dòng suy nghĩ của bạn!', 'success');
+  },
+
   addIcebergItem: function(type) {
     if (!this.state.currentUser) return;
     const inputId = type === 'floating' ? 'floatingInput' : 'submergedInput';

@@ -354,3 +354,100 @@ h1, h2, h3, h4, .font-heading, .font-serif-title {
   align-items: center;
   justify-content: space-between;
 }
+
+/* ==========================================================================
+   HANDBOOK COVER STYLING & DECORATIONS (FROM BURNOUT TO BURN BRIGHT)
+   ========================================================================== */
+
+/* Hero Cover Wrapper - Sunlit Forest Clearing */
+.handbook-hero-wrapper {
+  background: radial-gradient(circle at 50% 30%, rgba(254, 252, 232, 0.95) 0%, rgba(236, 253, 245, 0.9) 50%, rgba(209, 250, 229, 0.85) 100%);
+  border: 2px solid rgba(16, 185, 129, 0.25);
+  box-shadow: 0 20px 45px -10px rgba(5, 150, 105, 0.15);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Natural Foliage Border Accents */
+.handbook-hero-wrapper::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 8px;
+  background: linear-gradient(90deg, #15803d, #22c55e, #10b981, #14b8a6, #22c55e, #15803d);
+}
+
+/* Handbook Cover Art Showcase Frame */
+.cover-art-frame {
+  border-radius: 1.5rem;
+  box-shadow: 0 25px 50px -12px rgba(45, 90, 39, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.8);
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
+}
+
+.cover-art-frame:hover {
+  transform: translateY(-4px) scale(1.01);
+  box-shadow: 0 30px 60px -12px rgba(45, 90, 39, 0.45);
+}
+
+/* Pastel Multi-color Title (matching "Lời mở đầu" on Page 3) */
+.pastel-title-loi {
+  background: linear-gradient(120deg, #ff7a85 0%, #38a169 45%, #3182ce 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+/* Cute Companion Badges (Fox, Bunny, Cat, Bear) */
+.companion-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  transition: transform 0.2s ease;
+}
+
+.companion-badge:hover {
+  transform: scale(1.05);
+}
+
+.companion-fox { background: #fff7ed; color: #ea580c; border: 1px solid #fed7aa; }
+.companion-bunny { background: #fdf2f8; color: #db2777; border: 1px solid #fbcfe8; }
+.companion-cat { background: #f0fdfa; color: #0d9488; border: 1px solid #99f6e4; }
+.companion-bear { background: #fefce8; color: #b45309; border: 1px solid #fef08a; }
+
+/* Emotional Water Level Tank (Chiếc Van Xả Áp Lực) */
+.water-tank-gauge {
+  width: 100%;
+  height: 36px;
+  background: #f1f5f9;
+  border-radius: 1.25rem;
+  position: relative;
+  overflow: hidden;
+  border: 2px solid #cbd5e1;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.06);
+}
+
+.water-tank-fill {
+  height: 100%;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.4s ease;
+  border-radius: 1rem;
+}
+
+/* Grounding Step Card (5-4-3-2-1) */
+.grounding-step-box {
+  transition: all 0.3s ease;
+  border: 1.5px solid transparent;
+}
+
+.grounding-step-box:hover {
+  border-color: #10b981;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.1);
+}
