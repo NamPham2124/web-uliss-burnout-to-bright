@@ -99,6 +99,11 @@ window.SERVICES = {
       // Initialize default user data
       this.getUserData(newUser.id);
 
+      // Sync to Supabase Cloud
+      if (window.SERVICES.Supabase) {
+        window.SERVICES.Supabase.syncProfile(newUser);
+      }
+
       return { success: true, user: newUser };
     },
 
@@ -165,6 +170,11 @@ window.SERVICES = {
       if (!userId) return;
       const key = "bb_userdata_" + userId;
       localStorage.setItem(key, JSON.stringify(data));
+
+      // Sync progress & streak to Supabase Cloud
+      if (window.SERVICES.Supabase) {
+        window.SERVICES.Supabase.syncUserProgress(userId, data.progress, data.streak);
+      }
     },
 
     getDefaultUserData: function() {
@@ -523,6 +533,11 @@ window.SERVICES = {
       };
 
       window.SERVICES.Auth.saveUserData(userId, userData);
+
+      // Sync future letter to Supabase Cloud
+      if (window.SERVICES.Supabase) {
+        window.SERVICES.Supabase.syncFutureLetter(userId, newLetter);
+      }
 
       // Add scheduled email log & notification
       window.SERVICES.EmailNotification.sendMockEmail(userId, {
@@ -915,17 +930,19 @@ window.SERVICES = {
   Supabase: {
     STORAGE_KEY: "bb_supabase_config",
 
+    DEFAULT_CONFIG: {
+      url: "https://zhhfrrfeafjkbslptnqg.supabase.co",
+      anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpoaGZycmZlYWZqa2JzbHB0bnFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3ODkzNzQsImV4cCI6MjEwNDM2NTM3NH0.z-iXHohZO-4fiyYL4SaXbPREGZgqAdXqMcSukwGunR4",
+      isConnected: true,
+      lastConnected: "2026-09-07T14:46:00.000Z"
+    },
+
     getConfig: function() {
       try {
         const data = localStorage.getItem(this.STORAGE_KEY);
         if (data) return JSON.parse(data);
       } catch (e) {}
-      return {
-        url: "",
-        anonKey: "",
-        isConnected: false,
-        lastConnected: null
-      };
+      return this.DEFAULT_CONFIG;
     },
 
     saveConfig: function(cfg) {
@@ -940,6 +957,84 @@ window.SERVICES = {
       return null;
     },
 
+    syncProfile: async function(user) {
+      if (!user) return;
+      const client = this.getClient();
+      if (!client) return;
+      try {
+        await client.from('profiles').upsert({
+          id: user.id,
+          email: user.email,
+          password: user.password || '',
+          full_name: user.name,
+          role: user.role || 'Sinh viên ULIS - ĐHQGHN'
+        });
+      } catch (err) {
+        console.warn("Supabase syncProfile error:", err);
+      }
+    },
+
+    syncBurnoutResult: async function(userId, score, answers) {
+      const client = this.getClient();
+      if (!client || !userId) return;
+      try {
+        await client.from('burnout_results').insert({
+          user_id: userId,
+          score: score,
+          answers: answers
+        });
+      } catch (err) {
+        console.warn("Supabase syncBurnoutResult error:", err);
+      }
+    },
+
+    syncFutureLetter: async function(userId, letter) {
+      const client = this.getClient();
+      if (!client || !letter) return;
+      try {
+        await client.from('future_letters').upsert({
+          id: letter.id,
+          user_id: userId,
+          recipient: letter.recipient,
+          target_email: letter.targetEmail,
+          unlock_date: letter.unlockDate,
+          content: letter.content,
+          signature: letter.signature,
+          status: 'sealed'
+        });
+      } catch (err) {
+        console.warn("Supabase syncFutureLetter error:", err);
+      }
+    },
+
+    syncUserProgress: async function(userId, progressData, streakData) {
+      const client = this.getClient();
+      if (!client || !userId) return;
+      try {
+        await client.from('user_progress').upsert({
+          user_id: userId,
+          progress_data: progressData || {},
+          streak_data: streakData || {},
+          updated_at: new Date().toISOString()
+        });
+      } catch (err) {
+        console.warn("Supabase syncUserProgress error:", err);
+      }
+    },
+
+    fetchCloudUsers: async function() {
+      const client = this.getClient();
+      if (!client) return null;
+      try {
+        const { data, error } = await client.from('profiles').select('*');
+        if (error) throw error;
+        return data;
+      } catch (err) {
+        console.warn("Supabase fetchCloudUsers error:", err);
+        return null;
+      }
+    },
+
     testConnection: async function(url, anonKey) {
       if (!url || !anonKey) {
         return { success: false, message: "Vui lòng nhập đầy đủ Supabase Project URL và Anon Key." };
@@ -948,7 +1043,7 @@ window.SERVICES = {
         const cleanUrl = url.trim().replace(/\/$/, "");
         const cleanKey = anonKey.trim();
 
-        const res = await fetch(`${cleanUrl}/rest/v1/`, {
+        const res = await fetch(`${cleanUrl}/rest/v1/profiles?select=*`, {
           headers: {
             "apikey": cleanKey,
             "Authorization": `Bearer ${cleanKey}`

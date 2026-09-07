@@ -333,6 +333,11 @@ window.APP = {
       userData.progress.ch1.completed = true;
       window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
 
+      // Sync test result to Supabase Cloud
+      if (window.SERVICES.Supabase) {
+        window.SERVICES.Supabase.syncBurnoutResult(this.state.currentUser.id, avgScore, answers);
+      }
+
       // Record Streak Activity
       window.SERVICES.Streak.recordActivity(this.state.currentUser.id, "Hoàn thành Bài Test SBI 9 Câu");
       this.showToast('Đã lưu kết quả đánh giá Academic Burnout chuẩn hóa!', 'success');
