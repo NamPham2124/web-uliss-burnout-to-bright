@@ -77,7 +77,15 @@ window.APP = {
       }
     });
 
-    // 6. Initial Render
+    // 6. Theme Initialization
+    try {
+      const savedTheme = localStorage.getItem('theme');
+      if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+      }
+    } catch (e) {}
+
+    // 7. Initial Render
     this.render();
     console.log("Burn Bright App fully initialized.");
   },
@@ -87,6 +95,9 @@ window.APP = {
   // =========================================================================
   navigateTo: function(pageId, updateHash = true) {
     if (!this.state.currentUser) {
+      if (pageId === 'register' || pageId === 'login') {
+        this.state.authTab = pageId;
+      }
       this.render();
       return;
     }
@@ -152,6 +163,32 @@ window.APP = {
     const drawer = document.getElementById('mobileNavDrawer');
     if (drawer) {
       drawer.classList.toggle('hidden');
+    }
+  },
+
+  toggleTheme: function() {
+    const isDark = document.documentElement.classList.toggle('dark');
+    try {
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    } catch(e) {}
+    const themeIcon = document.getElementById('themeToggleIcon');
+    if (themeIcon) {
+      themeIcon.className = isDark ? 'fas fa-sun text-amber-400' : 'fas fa-moon text-slate-600';
+    }
+    this.showToast(isDark ? 'Đã bật chế độ Tối (Dark Mode)' : 'Đã chuyển sang chế độ Sáng (Light Mode)', 'info');
+  },
+
+  toggleFullScreen: function() {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(err => {
+        console.warn("Fullscreen request error:", err);
+      });
+      this.showToast('Đã chuyển sang chế độ Toàn màn hình', 'info');
+    } else {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+        this.showToast('Đã thoát chế độ Toàn màn hình', 'info');
+      }
     }
   },
 
@@ -360,12 +397,106 @@ window.APP = {
     }
   },
 
-  // Handlers for "Chiếc Van Xả Áp Lực" (Chapter 3)
+  // =========================================================================
+  // CHAPTER 3 HANDLERS (Backpack, Pressure Valve, Canvas, Grounding, Emotion Stop)
+  // =========================================================================
+  setBackpackWeight: function(percent) {
+    const textEl = document.getElementById('backpackWeightText');
+    if (textEl) textEl.innerText = percent + '%';
+    if (this.state.currentUser) {
+      const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
+      userData.progress.ch3 = userData.progress.ch3 || {};
+      userData.progress.ch3.backpackWeight = percent;
+      window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
+    }
+    this.showToast(`Đã chọn mức tải trọng ba lô: ${percent}%`, 'info');
+  },
+
+  selectBackpackAccessory: function(accId) {
+    if (this.state.currentUser) {
+      const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
+      userData.progress.ch3 = userData.progress.ch3 || {};
+      userData.progress.ch3.selectedAccessory = accId;
+      window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
+    }
+    this.render();
+  },
+
+  saveLusiAnswer: function(qId, val) {
+    if (!this.state.currentUser) return;
+    const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
+    userData.progress.ch3 = userData.progress.ch3 || {};
+    userData.progress.ch3.lusiAnswers = userData.progress.ch3.lusiAnswers || {};
+    userData.progress.ch3.lusiAnswers[qId] = val;
+    userData.progress.ch3.completed = true;
+    window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
+    window.SERVICES.Streak.recordActivity(this.state.currentUser.id, "Phân tích tình huống Lusi & Thuyết Lazarus");
+    this.showToast('Đã lưu câu trả lời bài tập Chiếc ba lô của Lusi!', 'success');
+  },
+
+  setBackpackItemCategory: function(itemId, category) {
+    if (!this.state.currentUser) return;
+    const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
+    userData.progress.ch3 = userData.progress.ch3 || {};
+    userData.progress.ch3.backpackCategories = userData.progress.ch3.backpackCategories || {};
+    userData.progress.ch3.backpackCategories[itemId] = category;
+    window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
+    this.render();
+  },
+
+  addCustomBackpackItem: function() {
+    const input = document.getElementById('customBackpackItemInput');
+    const catSelect = document.getElementById('customBackpackItemCat');
+    const val = input?.value?.trim();
+    const cat = catSelect?.value || 'keep';
+
+    if (!val) {
+      this.showToast('Vui lòng nhập điều bạn muốn sắp xếp.', 'warning');
+      return;
+    }
+
+    const newId = 'custom_' + Date.now();
+    window.APP_DATA.chapters[2].lusiBackpackExercise.classificationItems.push({
+      id: newId,
+      text: val,
+      defaultCategory: cat
+    });
+
+    if (this.state.currentUser) {
+      const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
+      userData.progress.ch3 = userData.progress.ch3 || {};
+      userData.progress.ch3.backpackCategories = userData.progress.ch3.backpackCategories || {};
+      userData.progress.ch3.backpackCategories[newId] = cat;
+      window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
+    }
+
+    if (input) input.value = '';
+    this.showToast(`Đã thêm vào ngăn ${cat.toUpperCase()} của ba lô!`, 'success');
+    this.render();
+  },
+
+  saveLusiEncouragement: function(val) {
+    if (!this.state.currentUser) return;
+    const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
+    userData.progress.ch3 = userData.progress.ch3 || {};
+    userData.progress.ch3.lusiAnswers = userData.progress.ch3.lusiAnswers || {};
+    userData.progress.ch3.lusiAnswers.encouragement = val;
+    window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
+    window.SERVICES.Streak.recordActivity(this.state.currentUser.id, "Viết lời nhắn động viên cho Lusi");
+    this.showToast('Đã lưu lời nhắn động viên ấm áp của bạn!', 'success');
+  },
+
+  // Handlers for "Chiếc Van Xả Áp Lực"
   setWaterLevel: function(percent, label, color) {
+    const bottleEl = document.getElementById('bottleWaterFill');
     const fillEl = document.getElementById('waterTankFill');
     const textEl = document.getElementById('waterLevelPercentText');
     const labelEl = document.getElementById('waterLevelLabelText');
 
+    if (bottleEl) {
+      bottleEl.style.height = percent + '%';
+      bottleEl.style.backgroundColor = color;
+    }
     if (fillEl) {
       fillEl.style.width = percent + '%';
       fillEl.style.backgroundColor = color;
@@ -375,15 +506,170 @@ window.APP = {
 
     if (this.state.currentUser) {
       const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
+      userData.progress.ch3 = userData.progress.ch3 || {};
       userData.progress.ch3.waterLevel = { percent, label, timestamp: new Date().toISOString() };
       window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
     }
     this.showToast(`Đã ghi nhận mức nước cảm xúc: ${percent}% — ${label}`, 'info');
   },
 
+  switchValveTab: function(tabId) {
+    document.querySelectorAll('.valve-tab-content').forEach(el => el.classList.add('hidden'));
+    const target = document.getElementById(`valveContent_${tabId}`);
+    if (target) target.classList.remove('hidden');
+
+    if (tabId === 'draw') {
+      setTimeout(() => this.initEmotionCanvas(), 60);
+    }
+  },
+
+  initEmotionCanvas: function() {
+    const canvas = document.getElementById('emotionCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    this.state.canvasContext = ctx;
+    this.state.canvasColor = this.state.canvasColor || '#1e293b';
+
+    let drawing = false;
+
+    const getPos = (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      return {
+        x: (clientX - rect.left) * (canvas.width / rect.width),
+        y: (clientY - rect.top) * (canvas.height / rect.height)
+      };
+    };
+
+    const startDraw = (e) => {
+      drawing = true;
+      const pos = getPos(e);
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y);
+      if (e.touches) e.preventDefault();
+    };
+
+    const draw = (e) => {
+      if (!drawing) return;
+      const pos = getPos(e);
+      ctx.strokeStyle = this.state.canvasColor || '#1e293b';
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+      if (e.touches) e.preventDefault();
+    };
+
+    const stopDraw = (e) => {
+      drawing = false;
+      if (e.touches) e.preventDefault();
+    };
+
+    canvas.onmousedown = startDraw;
+    canvas.onmousemove = draw;
+    canvas.onmouseup = stopDraw;
+    canvas.onmouseleave = stopDraw;
+
+    canvas.ontouchstart = startDraw;
+    canvas.ontouchmove = draw;
+    canvas.ontouchend = stopDraw;
+  },
+
+  setCanvasColor: function(color) {
+    this.state.canvasColor = color;
+    this.showToast(`Đã chọn màu nét vẽ!`, 'info');
+  },
+
+  clearEmotionCanvas: function() {
+    const canvas = document.getElementById('emotionCanvas');
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      this.showToast('Đã xóa bảng vẽ!', 'info');
+    }
+  },
+
+  saveEmotionCanvas: function() {
+    if (this.state.currentUser) {
+      const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
+      userData.progress.ch3 = userData.progress.ch3 || {};
+      userData.progress.ch3.canvasDrawn = true;
+      window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
+      window.SERVICES.Streak.recordActivity(this.state.currentUser.id, "Vẽ giải tỏa cảm xúc ở Chiếc Van Xả");
+    }
+    this.showToast('🎨 Tuyệt vời! Bạn đã hoàn thành bức vẽ giải tỏa cảm xúc!', 'success');
+  },
+
+  saveValveNotepad: function(text) {
+    if (!this.state.currentUser) return;
+    const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
+    userData.progress.ch3 = userData.progress.ch3 || {};
+    userData.progress.ch3.valveNotepad = text;
+    window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
+    window.SERVICES.Streak.recordActivity(this.state.currentUser.id, "Viết giải tỏa cảm xúc ở Chiếc Van Xả");
+    this.showToast('Đã lưu góc viết tự do xả van của bạn!', 'success');
+  },
+
+  saveValveTalkNote: function(text) {
+    if (!this.state.currentUser) return;
+    const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
+    userData.progress.ch3 = userData.progress.ch3 || {};
+    userData.progress.ch3.valveTalkNote = text;
+    window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
+    this.showToast('Đã lưu lời muốn chia sẻ của bạn!', 'success');
+  },
+
+  saveGroundingInputs: function() {
+    if (!this.state.currentUser) return;
+    const inputs = {};
+    for (let i = 1; i <= 5; i++) {
+      const el = document.getElementById(`groundingInput_${i}`);
+      if (el) inputs[i] = el.value.trim();
+    }
+    const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
+    userData.progress.ch3 = userData.progress.ch3 || {};
+    userData.progress.ch3.groundingInputs = inputs;
+    userData.progress.ch3.groundingCompleted = true;
+    window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
+    window.SERVICES.Streak.recordActivity(this.state.currentUser.id, "Hoàn thành Bài Tập Nối Đất 5-4-3-2-1");
+    this.showToast('🌿 Tuyệt vời! Bạn đã hoàn thành bài tập Nối Đất 5 Giác Quan và đưa tâm trí trở về hiện tại!', 'success');
+  },
+
+  finishValveRelease: function(feeling, newPercent) {
+    this.setWaterLevel(newPercent, feeling, '#10b981');
+    if (this.state.currentUser) {
+      const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
+      userData.progress.ch3 = userData.progress.ch3 || {};
+      userData.progress.ch3.completed = true;
+      userData.progress.ch3.finalFeeling = feeling;
+      window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
+      window.SERVICES.Streak.recordActivity(this.state.currentUser.id, "Xả van áp lực thành công");
+    }
+    this.showToast(`🎉 Van áp lực đã được mở an toàn! Cảm nhận hiện tại: "${feeling}".`, 'success');
+  },
+
+  saveEmotionStopJournal: function() {
+    if (!this.state.currentUser) return;
+    const data = {};
+    for (let i = 1; i <= 8; i++) {
+      const el = document.getElementById(`emStop_${i}`);
+      if (el) data['q' + i] = el.value.trim();
+    }
+    const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
+    userData.progress.ch3 = userData.progress.ch3 || {};
+    userData.progress.ch3.emotionStopData = data;
+    userData.progress.ch3.completed = true;
+    window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
+    window.SERVICES.Streak.recordActivity(this.state.currentUser.id, "Hoàn thành Nhật Ký Trạm Dừng Cảm Xúc");
+    this.showToast('💙 Đã lưu lại Nhật ký Trạm Dừng Cảm Xúc 8 bước của bạn!', 'success');
+  },
+
   saveValveReleaseMethod: function(methodName) {
     if (this.state.currentUser) {
       const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
+      userData.progress.ch3 = userData.progress.ch3 || {};
       userData.progress.ch3.valveMethod = methodName;
       window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
       window.SERVICES.Streak.recordActivity(this.state.currentUser.id, "Thực hiện Xả Áp Lực");
@@ -575,7 +861,8 @@ window.APP = {
 
           if (this.state.currentUser) {
             const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
-            userData.progress.ch3.pomodoroSessions = (userData.progress.ch3.pomodoroSessions || 0) + 1;
+            userData.progress.ch4 = userData.progress.ch4 || {};
+            userData.progress.ch4.pomodoroSessions = (userData.progress.ch4.pomodoroSessions || 0) + 1;
             window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
             window.SERVICES.Streak.recordActivity(this.state.currentUser.id, "Hoàn thành 1 Phiên Pomodoro 25p");
           }
@@ -611,13 +898,14 @@ window.APP = {
     if (!this.state.currentUser) return;
     const colors = ['green', 'yellow', 'red'];
     const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
-    userData.progress.ch3.energyMap = userData.progress.ch3.energyMap || {};
+    userData.progress.ch4 = userData.progress.ch4 || {};
+    userData.progress.ch4.energyMap = userData.progress.ch4.energyMap || {};
 
-    const current = userData.progress.ch3.energyMap[hour] || 'green';
+    const current = userData.progress.ch4.energyMap[hour] || 'green';
     const nextIdx = (colors.indexOf(current) + 1) % colors.length;
     const nextColor = colors[nextIdx];
 
-    userData.progress.ch3.energyMap[hour] = nextColor;
+    userData.progress.ch4.energyMap[hour] = nextColor;
     window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
 
     const slot = document.getElementById(`slot_${hour}`);
@@ -677,6 +965,20 @@ window.APP = {
     }
 
     window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
+    this.render();
+  },
+
+  saveChallengeDayAnswers: function(dayNum, ansObj) {
+    if (!this.state.currentUser) return;
+    const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
+    userData.progress.ch4 = userData.progress.ch4 || {};
+    userData.progress.ch4.challenge11Days = userData.progress.ch4.challenge11Days || {};
+    userData.progress.ch4.challenge11Days[dayNum] = userData.progress.ch4.challenge11Days[dayNum] || { completed: false };
+    Object.assign(userData.progress.ch4.challenge11Days[dayNum], ansObj);
+    userData.progress.ch4.challenge11Days[dayNum].completed = true;
+    window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
+    window.SERVICES.Streak.recordActivity(this.state.currentUser.id, `Hoàn thành bài tập Ngày ${dayNum}`);
+    this.showToast(`✓ Đã lưu câu trả lời và ghi nhận hoàn thành Ngày ${dayNum}!`, 'success');
     this.render();
   },
 
