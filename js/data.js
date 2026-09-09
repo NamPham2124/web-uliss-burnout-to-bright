@@ -326,7 +326,17 @@ window.APP_DATA = {
           {
             step: 4,
             title: "Bước 4: Kiểm tra lại chiếc bình",
-            desc: "Bây giờ, hãy quay lại hình ảnh chiếc bình. Mực nước của bạn còn bao nhiêu?",
+            subtitle: "Bây giờ, hãy quay lại hình ảnh chiếc bình.",
+            desc: "Sau khi đã xả bớt cảm xúc và thực hành bài tập nối đất, hãy quan sát chiếc bình của bạn. Mực nước của bạn còn bao nhiêu?",
+            image: "assets/jar_step4.png",
+            fullIllustration: "assets/valve_step4_full.png",
+            feelingsList: [
+              { id: "calm", label: "Bình tĩnh hơn", icon: "🕊️" },
+              { id: "relieved", label: "Nhẹ nhõm hơn", icon: "🍃" },
+              { id: "sad_better", label: "Vẫn buồn nhưng dễ chịu hơn", icon: "⛅" },
+              { id: "anxious_breathe", label: "Vẫn lo lắng nhưng có thể thở dễ hơn", icon: "🫁" },
+              { id: "not_much", label: "Chưa thay đổi nhiều", icon: "⏳" }
+            ],
             feelings: [
               "Bình tĩnh hơn",
               "Nhẹ nhõm hơn",

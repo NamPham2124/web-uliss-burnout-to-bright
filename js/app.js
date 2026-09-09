@@ -650,6 +650,82 @@ window.APP = {
     this.showToast(`🎉 Van áp lực đã được mở an toàn! Cảm nhận hiện tại: "${feeling}".`, 'success');
   },
 
+  setAfterWaterLevel: function(percent) {
+    this.state.valveAfterPercent = percent;
+    const disp = document.getElementById('valveAfterPercentDisplay');
+    if (disp) disp.innerText = percent + '%';
+
+    [10, 20, 30, 40, 50, 60, 80].forEach(p => {
+      const btn = document.getElementById(`afterLevelBtn_${p}`);
+      if (btn) {
+        if (p === percent) {
+          btn.className = "px-2.5 py-1.5 rounded-xl border text-xs font-extrabold transition-all bg-emerald-600 text-white border-emerald-700 shadow-sm scale-105";
+        } else {
+          btn.className = "px-2.5 py-1.5 rounded-xl border text-xs font-extrabold transition-all bg-white text-slate-700 border-slate-200 hover:bg-emerald-50";
+        }
+      }
+    });
+
+    const badge = document.getElementById('valveDiffBadge');
+    if (badge && this.state.currentUser) {
+      const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
+      const before = userData.progress?.ch3?.waterLevel?.percent || 65;
+      if (before > percent) {
+        badge.innerText = `Giảm ${before - percent}%`;
+        badge.className = "ml-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900";
+      } else {
+        badge.innerText = "Đang duy trì";
+        badge.className = "ml-2 text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700";
+      }
+    }
+    this.showToast(`Đã chọn mức nước sau bài tập: ${percent}%`, 'info');
+  },
+
+  updateValveFeelingsState: function() {
+    // Collect checked feelings
+    const selected = Array.from(document.querySelectorAll('input[name="valveFeelings"]:checked')).map(cb => cb.value);
+    this.state.valveStep4Feelings = selected;
+  },
+
+  saveValveStep4Complete: function() {
+    if (!this.state.currentUser) return;
+    const selectedBoxes = Array.from(document.querySelectorAll('input[name="valveFeelings"]:checked')).map(cb => cb.value);
+    const otherCheck = document.getElementById('valveFeelingOtherCheck');
+    const otherInp = document.getElementById('valveStep4OtherInput');
+    let otherText = '';
+    if (otherCheck && otherCheck.checked && otherInp) {
+      otherText = otherInp.value.trim();
+    }
+
+    const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
+    userData.progress.ch3 = userData.progress.ch3 || {};
+    const percent = this.state.valveAfterPercent !== undefined ? this.state.valveAfterPercent : (userData.progress.ch3.valveStep4?.percent || 20);
+    
+    userData.progress.ch3.valveStep4 = {
+      percent: percent,
+      feelings: selectedBoxes,
+      otherText: otherText,
+      completed: true,
+      updatedAt: new Date().toISOString()
+    };
+    userData.progress.ch3.completed = true;
+    window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
+    window.SERVICES.Streak.recordActivity(this.state.currentUser.id, "Kiểm tra lại chiếc bình cảm xúc (Bước 4)");
+    
+    // Also update main water fill in bottle if present
+    const bottleEl = document.getElementById('bottleWaterFill');
+    if (bottleEl) {
+      bottleEl.style.height = percent + '%';
+      bottleEl.style.backgroundColor = '#10b981';
+    }
+    const textEl = document.getElementById('waterLevelPercentText');
+    if (textEl) textEl.innerText = percent + '%';
+    const labelEl = document.getElementById('waterLevelLabelText');
+    if (labelEl) labelEl.innerText = selectedBoxes.length > 0 ? selectedBoxes.join(', ') : 'Đã xả van cảm xúc an toàn';
+
+    this.showToast(`🎉 Đã lưu kết quả kiểm tra chiếc bình cảm xúc! Mực nước hiện tại còn ${percent}%.`, 'success');
+  },
+
   saveEmotionStopJournal: function() {
     if (!this.state.currentUser) return;
     const data = {};

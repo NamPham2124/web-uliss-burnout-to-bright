@@ -1048,6 +1048,10 @@ window.COMPONENTS = {
     const lusiAnswers = ch3Progress?.lusiAnswers || {};
     const groundingInputs = ch3Progress?.groundingInputs || {};
     const emotionStopData = ch3Progress?.emotionStopData || {};
+    const valveStep4 = ch3Progress?.valveStep4 || {};
+    const afterWaterPercent = valveStep4.percent !== undefined ? valveStep4.percent : 20;
+    const selectedFeelings = valveStep4.feelings || [];
+    const otherFeelingText = valveStep4.otherText || '';
 
     return `
       <div class="max-w-4xl mx-auto space-y-10 pb-16">
@@ -1625,21 +1629,142 @@ window.COMPONENTS = {
             </div>
           </div>
 
-          <!-- Step 4: Kiểm tra lại chiếc bình -->
-          <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
-            <div class="flex items-center space-x-2">
-              <span class="w-7 h-7 rounded-xl bg-slate-700 text-white font-extrabold text-xs flex items-center justify-center">4</span>
-              <h4 class="font-bold text-slate-900 text-sm">${ch.pressureValveTool.steps[3].title}</h4>
+          <!-- Step 4: Kiểm tra lại chiếc bình (Trang 41 Sổ tay & Trang 6 PDF Yêu Cầu) -->
+          <div class="p-6 sm:p-7 rounded-3xl bg-gradient-to-br from-teal-50/80 via-white to-sky-50/70 border-2 border-teal-300 shadow-md space-y-6">
+            <!-- Header Step 4 -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-teal-100">
+              <div class="flex items-center space-x-3">
+                <span class="w-8 h-8 rounded-xl bg-teal-600 text-white font-extrabold text-sm flex items-center justify-center shadow-sm">4</span>
+                <div>
+                  <h4 class="font-extrabold text-slate-900 text-base sm:text-lg font-serif-title">Kiểm tra lại chiếc bình</h4>
+                  <p class="text-xs text-slate-600">Bây giờ, hãy quay lại hình ảnh chiếc bình sau khi bạn đã mở van xả và nối đất.</p>
+                </div>
+              </div>
+              <span class="text-[11px] font-bold text-teal-800 bg-teal-100 px-3 py-1 rounded-full uppercase tracking-wider self-start sm:self-auto">
+                <i class="fas fa-check-double text-teal-600 mr-1"></i> Đánh giá sau xả van
+              </span>
             </div>
-            <p class="text-xs text-slate-600">${ch.pressureValveTool.steps[3].desc}</p>
 
-            <div class="flex flex-wrap gap-2 pt-1">
-              ${ch.pressureValveTool.steps[3].feelings.map(f => `
-                <button onclick="APP.finishValveRelease('${f}', 20)" 
-                        class="px-3.5 py-2 rounded-xl border border-slate-200 bg-white hover:bg-emerald-50 hover:border-emerald-300 text-xs font-semibold text-slate-700 transition-all">
-                  ✓ ${f}
-                </button>
-              `).join('')}
+            <!-- Banner Câu hỏi chính từ sổ tay: Mực nước của bạn còn bao nhiêu? -->
+            <div class="p-4 rounded-2xl bg-sky-100/70 border border-sky-300 flex flex-col md:flex-row items-center justify-between gap-4">
+              <div class="flex items-center space-x-3">
+                <div class="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-2xl flex-shrink-0 text-amber-500">
+                  ❓
+                </div>
+                <div>
+                  <div class="text-sm sm:text-base font-extrabold text-sky-950">Mực nước của bạn còn bao nhiêu?</div>
+                  <div class="text-xs text-sky-800 mt-0.5">
+                    Mực nước ban đầu: <strong class="text-rose-600 font-bold">${savedWaterLevel.percent}%</strong> 
+                    <span class="mx-1.5 text-slate-400">➔</span> 
+                    Mực nước sau bài tập: <strong id="valveAfterPercentDisplay" class="text-emerald-700 text-sm font-extrabold">${afterWaterPercent}%</strong>
+                    <span id="valveDiffBadge" class="ml-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${savedWaterLevel.percent > afterWaterPercent ? 'bg-emerald-200 text-emerald-900' : 'bg-slate-200 text-slate-700'}">
+                      ${savedWaterLevel.percent > afterWaterPercent ? `Giảm ${savedWaterLevel.percent - afterWaterPercent}%` : 'Đang duy trì'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Thanh chọn % nhanh -->
+              <div class="flex flex-wrap items-center gap-1.5 justify-center md:justify-end">
+                <span class="text-[11px] font-bold text-slate-600 mr-1">Mức sau bài tập:</span>
+                ${[10, 20, 30, 40, 50, 60, 80].map(p => `
+                  <button type="button" onclick="APP.setAfterWaterLevel(${p})" 
+                          id="afterLevelBtn_${p}"
+                          class="px-2.5 py-1.5 rounded-xl border text-xs font-extrabold transition-all ${afterWaterPercent === p ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm scale-105' : 'bg-white text-slate-700 border-slate-200 hover:bg-emerald-50'}">
+                    ${p}%
+                  </button>
+                `).join('')}
+              </div>
+            </div>
+
+            <!-- Khối 2 cột: Checkbox Cảm xúc bên trái & Chiếc bình thủy tinh bên phải -->
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-center">
+              <!-- Cột trái (7 cột): Danh sách cảm xúc -->
+              <div class="md:col-span-7 space-y-3">
+                <div class="flex items-center justify-between">
+                  <h5 class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center space-x-1.5">
+                    <i class="fas fa-heart-pulse text-rose-500"></i>
+                    <span>Bây giờ mình cảm thấy (Chọn những điều đúng với bạn):</span>
+                  </h5>
+                </div>
+
+                <div class="space-y-2">
+                  ${[
+                    { id: 'calm', label: 'Bình tĩnh hơn', icon: '🕊️' },
+                    { id: 'relieved', label: 'Nhẹ nhõm hơn', icon: '🍃' },
+                    { id: 'sad_better', label: 'Vẫn buồn nhưng dễ chịu hơn', icon: '⛅' },
+                    { id: 'anxious_breathe', label: 'Vẫn lo lắng nhưng có thể thở dễ hơn', icon: '🫁' },
+                    { id: 'not_much', label: 'Chưa thay đổi nhiều', icon: '⏳' }
+                  ].map(item => {
+                    const isChecked = selectedFeelings.includes(item.label) || selectedFeelings.includes(item.id);
+                    return `
+                      <label class="flex items-center space-x-3 p-3 rounded-2xl border cursor-pointer transition-all ${isChecked ? 'bg-teal-50/90 border-teal-500 text-teal-950 font-bold shadow-xs' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'}">
+                        <input type="checkbox" name="valveFeelings" value="${item.label}" ${isChecked ? 'checked' : ''} 
+                               onchange="APP.updateValveFeelingsState()" 
+                               class="w-4 h-4 text-teal-600 rounded border-slate-300 focus:ring-teal-500">
+                        <span class="text-base">${item.icon}</span>
+                        <span class="text-xs">${item.label}</span>
+                      </label>
+                    `;
+                  }).join('')}
+
+                  <!-- Ô tùy chọn Khác: ..................... -->
+                  <div class="p-3 rounded-2xl border border-slate-200 bg-white space-y-2">
+                    <label class="flex items-center space-x-3 cursor-pointer">
+                      <input type="checkbox" id="valveFeelingOtherCheck" 
+                             ${otherFeelingText ? 'checked' : ''}
+                             onchange="
+                               const inp = document.getElementById('valveStep4OtherInput');
+                               if (inp && this.checked) inp.focus();
+                               APP.updateValveFeelingsState();
+                             " 
+                             class="w-4 h-4 text-teal-600 rounded border-slate-300 focus:ring-teal-500">
+                      <span class="text-base">✍️</span>
+                      <span class="text-xs font-bold text-slate-700">Khác:</span>
+                    </label>
+                    <input type="text" id="valveStep4OtherInput" value="${otherFeelingText}" 
+                           placeholder="Ghi thêm cảm xúc hoặc suy nghĩ hiện tại của bạn..." 
+                           oninput="
+                             const chk = document.getElementById('valveFeelingOtherCheck');
+                             if (chk && this.value.trim().length > 0) chk.checked = true;
+                           "
+                           class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-slate-50 focus:bg-white focus:ring-2 focus:ring-teal-400 focus:outline-none">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Cột phải (5 cột): Hình minh họa chiếc bình thủy tinh sau xả van -->
+              <div class="md:col-span-5 flex flex-col items-center justify-center space-y-3">
+                <div class="relative rounded-3xl overflow-hidden shadow-lg border-2 border-teal-200 bg-white p-3 max-w-[260px] w-full text-center transition-transform hover:scale-[1.02] duration-300">
+                  <img src="assets/jar_step4.png" alt="Chiếc bình sau xả van" class="w-full h-auto object-contain cursor-pointer" onclick="window.open('assets/valve_step4_full.png', '_blank')" title="Bấm để xem đầy đủ Trang 41 Sổ tay Canva">
+                  
+                  <div class="mt-2 text-center">
+                    <span class="text-[10px] font-bold text-teal-800 bg-teal-100 px-2.5 py-0.5 rounded-full inline-block">
+                      Trang 41 Sổ tay Tâm lý
+                    </span>
+                    <p class="text-[10px] text-slate-400 italic mt-0.5">(Chạm để xem trang gốc Canva)</p>
+                  </div>
+                </div>
+
+                <div class="text-center">
+                  <div class="text-xs font-extrabold text-teal-900">Chiếc bình cảm xúc đã được hạ nhiệt</div>
+                  <div class="text-[11px] text-slate-500">Bạn đã cho phép cảm xúc của mình có một chỗ để đi ra an toàn.</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Nút Lưu & Hoàn Tất -->
+            <div class="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-teal-100">
+              <div class="text-xs text-slate-500 italic">
+                <i class="fas fa-info-circle text-teal-600 mr-1"></i>
+                Kết quả sẽ được tự động đồng bộ vào lịch sử theo dõi sức khỏe tinh thần của bạn.
+              </div>
+
+              <button type="button" onclick="APP.saveValveStep4Complete()" 
+                      class="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 text-white font-bold text-xs rounded-xl shadow-lg shadow-teal-200 flex items-center justify-center space-x-2 transition-all transform hover:-translate-y-0.5">
+                <i class="fas fa-check-circle text-sm"></i>
+                <span>Xác nhận & Lưu kết quả kiểm tra chiếc bình</span>
+              </button>
             </div>
           </div>
         </div>
