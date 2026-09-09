@@ -1131,43 +1131,90 @@ window.COMPONENTS = {
             ${COMPONENTS.renderFullscreenButton('backpackSection', 'Chiếc Ba Lô Của Lusi')}
           </div>
 
-          <!-- 5 Nguồn lực phụ kiện gắn ngoài ba lô -->
-          <div class="space-y-3">
-            <div class="flex items-center justify-between">
-              <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center space-x-1.5">
-                <i class="fas fa-key text-amber-500"></i>
-                <span>5 Phụ kiện hỗ trợ trên ba lô của Lusi (Chọn để khám phá nguồn lực)</span>
-              </h4>
-              <span class="text-[10px] text-amber-600 font-semibold">Chạm vào phụ kiện để xem</span>
+          <!-- Showcase Hình ảnh Chiếc ba lô của Lusi từ Sổ tay (Trang 28-37) -->
+          <div class="p-5 sm:p-6 rounded-3xl bg-gradient-to-b from-teal-50/50 via-white to-amber-50/40 border border-teal-200 shadow-sm space-y-4">
+            <div class="text-center space-y-1">
+              <span class="text-[11px] font-extrabold text-teal-800 bg-teal-100 px-3 py-1 rounded-full uppercase tracking-wider inline-flex items-center space-x-1">
+                <i class="fas fa-toolbox text-teal-600"></i>
+                <span>Minh Họa Sổ Tay Tâm Lý</span>
+              </span>
+              <h3 class="text-lg sm:text-xl font-extrabold text-slate-900 font-serif-title">
+                Bên ngoài chiếc balo — tôi đang có gì trong tay?
+              </h3>
+              <p class="text-xs text-slate-600 max-w-xl mx-auto">
+                Bên cạnh áp lực trong chiếc ba lô nặng nề, Lusi vẫn có những nguồn lực có thể giúp bạn ấy vượt qua hành trình phía trước. Các phụ kiện bên ngoài tượng trưng cho những gì bạn đang có sẵn.
+              </p>
             </div>
 
-            <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
-              ${ch.lusiBackpackExercise.accessories.map(acc => {
-                const isSelected = selectedAccessory === acc.id;
+            <!-- Ảnh minh họa chiếc ba lô và 5 phụ kiện chính thức từ sổ tay -->
+            <div class="flex justify-center pt-2">
+              <div class="rounded-2xl overflow-hidden shadow-lg border-2 border-teal-200 bg-white max-w-lg w-full transition-transform hover:scale-[1.01] duration-300">
+                <img src="${ch.lusiBackpackExercise.backpackImage || 'assets/lusi_backpack.png'}" 
+                     alt="Bên ngoài chiếc balo - tôi đang có gì trong tay?" 
+                     class="w-full h-auto object-contain cursor-pointer"
+                     onclick="window.open('assets/lusi_backpack.png', '_blank')"
+                     title="Bấm để xem ảnh phóng to">
+              </div>
+            </div>
+
+            <div class="text-center text-[11px] text-slate-400 italic">
+              (Chạm vào ảnh để phóng to • Bấm chọn các phụ kiện bên dưới để khám phá ý nghĩa tâm lý học)
+            </div>
+
+            <!-- 5 Nguồn lực phụ kiện gắn ngoài ba lô tương tác -->
+            <div class="pt-2 space-y-3">
+              <div class="flex items-center justify-between">
+                <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center space-x-1.5">
+                  <i class="fas fa-key text-teal-600"></i>
+                  <span>5 Phụ kiện hỗ trợ trên ba lô của Lusi (Chọn để khám phá nguồn lực)</span>
+                </h4>
+                <span class="text-[10px] text-teal-700 font-semibold">Chạm vào phụ kiện để xem</span>
+              </div>
+
+              <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                ${ch.lusiBackpackExercise.accessories.map(acc => {
+                  const isSelected = selectedAccessory === acc.id;
+                  return `
+                    <div onclick="APP.selectBackpackAccessory('${acc.id}')" 
+                         class="p-3.5 rounded-2xl border text-center cursor-pointer transition-all ${isSelected ? 'bg-teal-50 border-teal-500 ring-2 ring-teal-300 shadow-md transform -translate-y-0.5' : 'bg-white border-slate-200 hover:bg-teal-50/50 hover:border-teal-200'}">
+                      <div class="text-2xl mb-1">${acc.icon}</div>
+                      <div class="text-xs font-extrabold text-slate-800">${acc.name}</div>
+                      <div class="text-[10px] text-slate-500 mt-1 line-clamp-2">${acc.meaning}</div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+
+              <!-- Chi tiết phụ kiện đang chọn -->
+              ${(() => {
+                const curAcc = ch.lusiBackpackExercise.accessories.find(a => a.id === selectedAccessory) || ch.lusiBackpackExercise.accessories[0];
                 return `
-                  <div onclick="APP.selectBackpackAccessory('${acc.id}')" 
-                       class="p-3.5 rounded-2xl border text-center cursor-pointer transition-all ${isSelected ? 'bg-amber-100 border-amber-400 ring-2 ring-amber-300 shadow-md' : 'bg-slate-50/80 border-slate-200 hover:bg-amber-50'}">
-                    <div class="text-2xl mb-1">${acc.icon}</div>
-                    <div class="text-xs font-bold text-slate-800">${acc.name}</div>
-                    <div class="text-[10px] text-slate-500 mt-1 line-clamp-2">${acc.meaning}</div>
+                  <div class="p-4 rounded-2xl bg-teal-50/80 border border-teal-300 flex items-start space-x-3 text-xs shadow-sm">
+                    <div class="text-3xl flex-shrink-0">${curAcc.icon}</div>
+                    <div class="flex-1">
+                      <div class="font-bold text-teal-900 text-sm flex items-center space-x-2">
+                        <span>${curAcc.name}: Nguồn lực tiếp sức cho bạn</span>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-200 text-teal-800">Đang chọn</span>
+                      </div>
+                      <p class="text-slate-700 mt-1 leading-relaxed">${curAcc.meaning}</p>
+                      <div class="mt-2.5 flex items-center space-x-2">
+                        <button onclick="
+                          const ans3 = document.getElementById('lusiAns3');
+                          if (ans3) {
+                            ans3.value = 'Mình chọn ${curAcc.name}: ${curAcc.meaning}. Đây là nguồn lực mình cảm thấy cần nhất hiện tại.';
+                            APP.saveLusiAnswer('q3', ans3.value);
+                          }
+                        " class="px-3.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-[11px] inline-flex items-center space-x-1.5 shadow-sm transition-all">
+                          <i class="fas fa-check-circle text-xs"></i>
+                          <span>Áp dụng nguồn lực này cho Câu 3</span>
+                        </button>
+                        <span class="text-[10px] text-slate-500 italic">(Tự động điền vào Câu 3 bên dưới)</span>
+                      </div>
+                    </div>
                   </div>
                 `;
-              }).join('')}
+              })()}
             </div>
-
-            <!-- Detail display of selected accessory -->
-            ${(() => {
-              const curAcc = ch.lusiBackpackExercise.accessories.find(a => a.id === selectedAccessory) || ch.lusiBackpackExercise.accessories[0];
-              return `
-                <div class="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex items-start space-x-3 text-xs">
-                  <div class="text-3xl flex-shrink-0">${curAcc.icon}</div>
-                  <div>
-                    <div class="font-bold text-amber-900">${curAcc.name}: Nguồn lực tiếp sức cho bạn</div>
-                    <p class="text-slate-700 mt-0.5">${curAcc.meaning}</p>
-                  </div>
-                </div>
-              `;
-            })()}
           </div>
 
           <!-- Câu 1 & Câu 2: Nhận diện áp lực và Đánh giá ba lô -->

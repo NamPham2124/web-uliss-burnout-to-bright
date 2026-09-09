@@ -261,7 +261,9 @@ window.APP_DATA = {
       // Bài tập 1: Chiếc ba lô của Lusi
       lusiBackpackExercise: {
         title: "Chiếc ba lô của Lusi: Phân loại áp lực & Khám phá nguồn lực",
-        instruction: "Hãy cùng Lusi mở từng ngăn cặp, nhìn thật kỹ bên trong và khám phá những nguồn lực sẵn có để sắp xếp lại chiếc ba lô thật ngăn nắp nhé!",
+        subtitle: "Bên ngoài chiếc ba lô — tôi đang có gì trong tay?",
+        instruction: "Bên cạnh áp lực trong chiếc ba lô nặng nề, Lusi vẫn luôn có những nguồn lực hỗ trợ xung quanh. Hãy cùng mở từng ngăn cặp, quan sát các phụ kiện gắn ngoài để khám phá những điểm tựa bạn đang có trong tay nhé!",
+        backpackImage: "assets/lusi_backpack.png",
         accessories: [
           { id: "umbrella", icon: "🌂", name: "Chiếc ô", meaning: "Những người có thể lắng nghe và hỗ trợ Lusi khi gặp khó khăn (bạn bè, thầy cô, gia đình)" },
           { id: "bottle", icon: "💧", name: "Bình nước", meaning: "Điều giúp Lusi duy trì năng lượng và tiếp tục bước đi (nghỉ ngơi, ăn uống, thể thao)" },
