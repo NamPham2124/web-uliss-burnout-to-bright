@@ -1148,7 +1148,7 @@ window.COMPONENTS = {
 
             <!-- Ảnh minh họa chiếc ba lô và 5 phụ kiện chính thức từ sổ tay -->
             <div class="flex justify-center pt-2">
-              <div class="rounded-2xl overflow-hidden shadow-lg border-2 border-teal-200 bg-white max-w-lg w-full transition-transform hover:scale-[1.01] duration-300">
+              <div class="rounded-2xl overflow-hidden shadow-lg border-2 border-teal-200 bg-white max-w-2xl w-full transition-transform hover:scale-[1.01] duration-300">
                 <img src="${ch.lusiBackpackExercise.backpackImage || 'assets/lusi_backpack.png'}" 
                      alt="Bên ngoài chiếc balo - tôi đang có gì trong tay?" 
                      class="w-full h-auto object-contain cursor-pointer"
@@ -1176,10 +1176,10 @@ window.COMPONENTS = {
                   const isSelected = selectedAccessory === acc.id;
                   return `
                     <div onclick="APP.selectBackpackAccessory('${acc.id}')" 
-                         class="p-3.5 rounded-2xl border text-center cursor-pointer transition-all ${isSelected ? 'bg-teal-50 border-teal-500 ring-2 ring-teal-300 shadow-md transform -translate-y-0.5' : 'bg-white border-slate-200 hover:bg-teal-50/50 hover:border-teal-200'}">
+                         class="p-3 sm:p-3.5 rounded-2xl border text-center cursor-pointer transition-all flex flex-col justify-start items-center ${isSelected ? 'bg-teal-50 border-teal-500 ring-2 ring-teal-300 shadow-md transform -translate-y-0.5' : 'bg-white border-slate-200 hover:bg-teal-50/50 hover:border-teal-200'}">
                       <div class="text-2xl mb-1">${acc.icon}</div>
                       <div class="text-xs font-extrabold text-slate-800">${acc.name}</div>
-                      <div class="text-[10px] text-slate-500 mt-1 line-clamp-2">${acc.meaning}</div>
+                      <div class="text-[10px] text-slate-600 mt-1 leading-snug break-words">${acc.meaning}</div>
                     </div>
                   `;
                 }).join('')}
