@@ -2103,9 +2103,10 @@ window.COMPONENTS = {
               <p class="text-xs text-slate-500 mt-1">${ch.theory.challenge11DaysIntro.content}</p>
             </div>
             <div class="flex items-center space-x-3">
-              <div class="text-right">
-                <span class="text-xs font-bold text-emerald-600 block">Tiến độ</span>
-                <div class="text-lg font-extrabold text-slate-900">${completedDaysCount} / 11 Ngày</div>
+              <div class="flex items-center space-x-1.5 text-xs font-bold whitespace-nowrap px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 shadow-sm">
+                <i class="fas fa-calendar-check text-emerald-600"></i>
+                <span>Tiến độ:</span>
+                <span class="font-extrabold text-emerald-950">${completedDaysCount} / 11 Ngày</span>
               </div>
               ${COMPONENTS.renderFullscreenButton('challenge11Section', 'Thử Thách 11 Ngày Tìm Lại Nhịp Thở')}
             </div>
@@ -2117,7 +2118,7 @@ window.COMPONENTS = {
               <div class="space-y-3">
                 <div class="flex items-center space-x-2">
                   <span class="px-2.5 py-1 rounded-full bg-pink-100 text-pink-800 text-[11px] font-extrabold">Chặng ${st.stage}</span>
-                  <h3 class="text-sm font-bold text-slate-900 font-serif-title">${st.name}</h3>
+                  <h3 class="text-sm font-bold text-slate-900 font-serif-title">${(st.name || '').replace(/^Chặng\s*\d+\s*:\s*/i, '')}</h3>
                 </div>
                 <p class="text-xs text-slate-500 pl-2">${st.desc}</p>
 

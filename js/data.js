@@ -391,7 +391,7 @@ window.APP_DATA = {
       stages11Days: [
         {
           stage: 1,
-          name: "Chặng 1: Nghỉ ngơi và phục hồi cảm xúc",
+          name: "Nghỉ ngơi và phục hồi cảm xúc",
           desc: "Điều duy nhất bạn cần làm là lắng nghe chính mình nhiều hơn, lắng nghe những nhu cầu, cảm xúc và chăm sóc cơ thể, tâm hồn.",
           days: [
             {
@@ -418,7 +418,7 @@ window.APP_DATA = {
         },
         {
           stage: 2,
-          name: "Chặng 2: Trở về với hiện tại",
+          name: "Trở về với hiện tại",
           desc: "Khám phá khả năng neo đậu tâm trí vào khoảnh khắc hiện tại, giải phóng khỏi những lo âu về tương lai.",
           days: [
             {
@@ -457,7 +457,7 @@ window.APP_DATA = {
         },
         {
           stage: 3,
-          name: "Chặng 3: Hãy tin vào chính bạn",
+          name: "Hãy tin vào chính bạn",
           desc: "Nhìn lại chính mình một cách dịu dàng hơn — nhận ra những giá trị tốt đẹp vốn luôn hiện hữu bên trong bạn.",
           days: [
             {
@@ -480,7 +480,7 @@ window.APP_DATA = {
         },
         {
           stage: 4,
-          name: "Chặng 4: Đồng điệu với chính mình",
+          name: "Đồng điệu với chính mình",
           desc: "Hiểu được nhịp năng lượng của bản thân để điều chỉnh việc học, nghỉ ngơi và tập trung sâu.",
           days: [
             {
