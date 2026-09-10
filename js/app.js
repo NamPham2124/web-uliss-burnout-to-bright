@@ -277,7 +277,21 @@ window.APP = {
   changeAudioTrack: function(trackKey) {
     window.SERVICES.Audio.setTrack(trackKey);
     const state = window.SERVICES.Audio.getState();
-    this.showToast(`🎵 Đã đổi sang: ${state.trackInfo.name}`, 'info');
+    this.showToast(`🎵 Đã chuyển bài: ${state.trackInfo.name}`, 'info');
+    this.render();
+  },
+
+  nextAudioTrack: function() {
+    window.SERVICES.Audio.nextTrack();
+    const state = window.SERVICES.Audio.getState();
+    this.showToast(`⏭️ Đã chuyển bài: ${state.trackInfo.name}`, 'info');
+    this.render();
+  },
+
+  prevAudioTrack: function() {
+    window.SERVICES.Audio.prevTrack();
+    const state = window.SERVICES.Audio.getState();
+    this.showToast(`⏮️ Đã quay lại: ${state.trackInfo.name}`, 'info');
     this.render();
   },
 

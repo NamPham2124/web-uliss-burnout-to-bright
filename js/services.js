@@ -860,29 +860,66 @@ window.SERVICES = {
   Audio: {
     ctx: null,
     isPlaying: false,
-    currentTrack: "healing_piano",
+    currentTrack: "senbonzakura",
     volume: 0.35,
     masterGain: null,
     synthInterval: null,
     noiseNode: null,
+    audioElement: null,
 
     tracks: {
+      senbonzakura: {
+        id: "senbonzakura",
+        name: "Senbonzakura (Violin Cover)",
+        artist: "Lindsey Stirling",
+        file: "assets/audio/senbonzakura_violin.mp3",
+        icon: "fa-guitar",
+        category: "violin",
+        desc: "Bản hòa tấu violin bùng nổ năng lượng tích cực"
+      },
+      counting_stars: {
+        id: "counting_stars",
+        name: "Counting Stars (Violin Cover)",
+        artist: "Jun Sung Ahn",
+        file: "assets/audio/counting_stars_violin.mp3",
+        icon: "fa-star",
+        category: "violin",
+        desc: "Giai điệu violin tươi vui, tiếp thêm động lực học tập"
+      },
+      we_dont_talk_anymore: {
+        id: "we_dont_talk_anymore",
+        name: "We Don't Talk Anymore (Violin Cover)",
+        artist: "Daniel Jang",
+        file: "assets/audio/we_dont_talk_anymore_violin.mp3",
+        icon: "fa-heart",
+        category: "violin",
+        desc: "Bản violin sâu lắng, êm ái xua tan căng thẳng mệt mỏi"
+      },
       healing_piano: {
         id: "healing_piano",
         name: "Giai điệu Chữa Lành & Piano Dịu Êm",
+        artist: "Zen Ambient",
+        file: null,
         icon: "fa-music",
+        category: "ambient",
         desc: "Hòa âm êm ái xoa dịu mỏi mệt não bộ"
       },
       solfeggio_432: {
         id: "solfeggio_432",
         name: "Tần số Solfeggio 432Hz Thiền Định",
+        artist: "Sound Therapy",
+        file: null,
         icon: "fa-spa",
+        category: "ambient",
         desc: "Tần số rung động tái tạo năng lượng tích cực"
       },
       zen_nature: {
         id: "zen_nature",
         name: "Tiếng Suối Nguồn & Không Gian Xanh",
+        artist: "Nature Relax",
+        file: null,
         icon: "fa-leaf",
+        category: "ambient",
         desc: "Âm thanh tự nhiên giúp tăng khả năng tập trung"
       }
     },
@@ -890,12 +927,28 @@ window.SERVICES = {
     init: function() {
       try {
         const savedTrack = localStorage.getItem("bb_audio_track");
-        if (savedTrack && this.tracks[savedTrack]) this.currentTrack = savedTrack;
+        if (savedTrack && this.tracks[savedTrack]) {
+          this.currentTrack = savedTrack;
+        } else {
+          this.currentTrack = "senbonzakura";
+        }
         const savedVol = localStorage.getItem("bb_audio_volume");
         if (savedVol !== null) this.volume = parseFloat(savedVol);
       } catch (e) {
         console.error("Audio init error", e);
       }
+    },
+
+    ensureAudioElement: function() {
+      if (!this.audioElement && typeof window !== "undefined" && window.Audio) {
+        this.audioElement = new window.Audio();
+        this.audioElement.loop = true;
+        this.audioElement.volume = this.volume;
+        this.audioElement.addEventListener("ended", () => {
+          this.nextTrack();
+        });
+      }
+      return this.audioElement;
     },
 
     ensureContext: function() {
@@ -999,14 +1052,42 @@ window.SERVICES = {
         this.currentTrack = trackKey;
         try { localStorage.setItem("bb_audio_track", trackKey); } catch (e) {}
       }
-      this.ensureContext();
+      const track = this.tracks[this.currentTrack] || this.tracks.senbonzakura;
       this.isPlaying = true;
-      this.startSynthLoop();
+
+      if (track.file) {
+        this.stopSynthLoop();
+        const audio = this.ensureAudioElement();
+        if (audio) {
+          const currentSrc = audio.getAttribute("data-track-id");
+          if (currentSrc !== track.id || !audio.src) {
+            audio.src = track.file;
+            audio.setAttribute("data-track-id", track.id);
+            audio.load();
+          }
+          audio.volume = this.volume;
+          const playPromise = audio.play();
+          if (playPromise !== undefined) {
+            playPromise.catch(err => {
+              console.log("Audio autoplay prevented or error:", err);
+            });
+          }
+        }
+      } else {
+        if (this.audioElement) {
+          this.audioElement.pause();
+        }
+        this.ensureContext();
+        this.startSynthLoop();
+      }
       return true;
     },
 
     pause: function() {
       this.isPlaying = false;
+      if (this.audioElement) {
+        this.audioElement.pause();
+      }
       this.stopSynthLoop();
     },
 
@@ -1021,27 +1102,54 @@ window.SERVICES = {
 
     setVolume: function(val) {
       this.volume = Math.max(0, Math.min(1, parseFloat(val)));
+      if (this.audioElement) {
+        this.audioElement.volume = this.volume;
+      }
       if (this.masterGain && this.ctx) {
-        this.masterGain.gain.setValueAtTime(this.volume, this.ctx.currentTime);
+        try {
+          this.masterGain.gain.setValueAtTime(this.volume, this.ctx.currentTime);
+        } catch (e) {}
       }
       try { localStorage.setItem("bb_audio_volume", this.volume.toString()); } catch (e) {}
     },
 
     setTrack: function(trackKey) {
       if (this.tracks[trackKey]) {
+        const oldTrack = this.currentTrack;
         this.currentTrack = trackKey;
         try { localStorage.setItem("bb_audio_track", trackKey); } catch (e) {}
         if (this.isPlaying) {
-          this.startSynthLoop();
+          if (this.tracks[oldTrack]?.file && !this.tracks[trackKey]?.file) {
+            if (this.audioElement) this.audioElement.pause();
+          }
+          this.play(trackKey);
         }
       }
+    },
+
+    nextTrack: function() {
+      const trackKeys = Object.keys(this.tracks);
+      const curIdx = trackKeys.indexOf(this.currentTrack);
+      const nextIdx = (curIdx + 1) % trackKeys.length;
+      const nextKey = trackKeys[nextIdx];
+      this.setTrack(nextKey);
+      return nextKey;
+    },
+
+    prevTrack: function() {
+      const trackKeys = Object.keys(this.tracks);
+      const curIdx = trackKeys.indexOf(this.currentTrack);
+      const prevIdx = (curIdx - 1 + trackKeys.length) % trackKeys.length;
+      const prevKey = trackKeys[prevIdx];
+      this.setTrack(prevKey);
+      return prevKey;
     },
 
     getState: function() {
       return {
         isPlaying: this.isPlaying,
         currentTrack: this.currentTrack,
-        trackInfo: this.tracks[this.currentTrack] || this.tracks.healing_piano,
+        trackInfo: this.tracks[this.currentTrack] || this.tracks.senbonzakura,
         volume: this.volume
       };
     }
