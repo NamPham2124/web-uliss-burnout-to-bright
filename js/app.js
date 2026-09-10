@@ -422,6 +422,191 @@ window.APP = {
     this.render();
   },
 
+  handleAccessoryDragStart: function(event, accId) {
+    if (event.dataTransfer) {
+      event.dataTransfer.setData('text/plain', accId);
+      event.dataTransfer.effectAllowed = 'copyMove';
+    }
+    const target = event.currentTarget || event.target;
+    if (target) {
+      target.classList.add('opacity-50', 'scale-95');
+    }
+    const dropZone = document.getElementById('backpackDropZone');
+    if (dropZone) {
+      dropZone.classList.add('ring-4', 'ring-teal-400', 'bg-teal-50/60');
+    }
+  },
+
+  handleAccessoryDragEnd: function(event) {
+    const target = event.currentTarget || event.target;
+    if (target) {
+      target.classList.remove('opacity-50', 'scale-95');
+    }
+    const dropZone = document.getElementById('backpackDropZone');
+    if (dropZone) {
+      dropZone.classList.remove('ring-4', 'ring-teal-400', 'bg-teal-50/60');
+    }
+  },
+
+  handleBackpackDragOver: function(event) {
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'copy';
+    }
+    const dropZone = document.getElementById('backpackDropZone');
+    if (dropZone && !dropZone.classList.contains('ring-4')) {
+      dropZone.classList.add('ring-4', 'ring-teal-400', 'bg-teal-50/60');
+    }
+  },
+
+  handleBackpackDragEnter: function(event) {
+    event.preventDefault();
+    const dropZone = document.getElementById('backpackDropZone');
+    if (dropZone) {
+      dropZone.classList.add('ring-4', 'ring-teal-400', 'bg-teal-50/60');
+    }
+  },
+
+  handleBackpackDragLeave: function(event) {
+    const dropZone = document.getElementById('backpackDropZone');
+    if (dropZone && event.target === dropZone) {
+      dropZone.classList.remove('ring-4', 'ring-teal-400', 'bg-teal-50/60');
+    }
+  },
+
+  handleBackpackDrop: function(event, targetSlotAccId) {
+    event.preventDefault();
+    const dropZone = document.getElementById('backpackDropZone');
+    if (dropZone) {
+      dropZone.classList.remove('ring-4', 'ring-teal-400', 'bg-teal-50/60');
+    }
+    let accId = event.dataTransfer ? event.dataTransfer.getData('text/plain') : null;
+    if (!accId && targetSlotAccId) {
+      accId = targetSlotAccId;
+    }
+    if (accId) {
+      this.equipBackpackAccessory(accId);
+    }
+  },
+
+  toggleBackpackAccessory: function(accId) {
+    if (!this.state.currentUser) {
+      if (window.SERVICES?.Auth?.loginGuest) {
+        this.state.currentUser = window.SERVICES.Auth.loginGuest();
+      } else {
+        return;
+      }
+    }
+    const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
+    userData.progress.ch3 = userData.progress.ch3 || {};
+    let equipped = userData.progress.ch3.equippedAccessories;
+    if (!Array.isArray(equipped)) {
+      equipped = ['umbrella', 'bottle'];
+    }
+    const idx = equipped.indexOf(accId);
+    let msg = '';
+    const accItem = window.APP_DATA?.chapters?.[2]?.lusiBackpackExercise?.accessories?.find(a => a.id === accId);
+    const accName = accItem ? accItem.name : accId;
+
+    if (idx >= 0) {
+      equipped.splice(idx, 1);
+      msg = `Đã tháo ${accName} khỏi ba lô.`;
+    } else {
+      equipped.push(accId);
+      msg = `Đã gắn ${accName} vào ba lô Lusi! 🎒`;
+    }
+    userData.progress.ch3.equippedAccessories = equipped;
+    userData.progress.ch3.selectedAccessory = accId;
+    window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
+    this.showToast(msg, idx >= 0 ? 'info' : 'success');
+    this.render();
+  },
+
+  equipBackpackAccessory: function(accId) {
+    if (!this.state.currentUser) {
+      if (window.SERVICES?.Auth?.loginGuest) {
+        this.state.currentUser = window.SERVICES.Auth.loginGuest();
+      } else {
+        return;
+      }
+    }
+    const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
+    userData.progress.ch3 = userData.progress.ch3 || {};
+    let equipped = userData.progress.ch3.equippedAccessories;
+    if (!Array.isArray(equipped)) {
+      equipped = ['umbrella', 'bottle'];
+    }
+    const accItem = window.APP_DATA?.chapters?.[2]?.lusiBackpackExercise?.accessories?.find(a => a.id === accId);
+    const accName = accItem ? accItem.name : accId;
+
+    if (!equipped.includes(accId)) {
+      equipped.push(accId);
+      userData.progress.ch3.equippedAccessories = equipped;
+      userData.progress.ch3.selectedAccessory = accId;
+      window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
+      this.showToast(`Đã gắn ${accName} vào ba lô Lusi! 🎒`, 'success');
+      this.render();
+    } else {
+      userData.progress.ch3.selectedAccessory = accId;
+      window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
+      this.showToast(`${accName} đã được trang bị trên ba lô!`, 'info');
+      this.render();
+    }
+  },
+
+  unequipBackpackAccessory: function(accId, event) {
+    if (event) {
+      event.stopPropagation();
+    }
+    if (!this.state.currentUser) return;
+    const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
+    userData.progress.ch3 = userData.progress.ch3 || {};
+    let equipped = userData.progress.ch3.equippedAccessories;
+    if (!Array.isArray(equipped)) {
+      equipped = ['umbrella', 'bottle'];
+    }
+    const accItem = window.APP_DATA?.chapters?.[2]?.lusiBackpackExercise?.accessories?.find(a => a.id === accId);
+    const accName = accItem ? accItem.name : accId;
+
+    equipped = equipped.filter(id => id !== accId);
+    userData.progress.ch3.equippedAccessories = equipped;
+    window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
+    this.showToast(`Đã tháo ${accName} khỏi ba lô.`, 'info');
+    this.render();
+  },
+
+  equipAllBackpackAccessories: function() {
+    if (!this.state.currentUser) {
+      if (window.SERVICES?.Auth?.loginGuest) {
+        this.state.currentUser = window.SERVICES.Auth.loginGuest();
+      } else {
+        return;
+      }
+    }
+    const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
+    userData.progress.ch3 = userData.progress.ch3 || {};
+    userData.progress.ch3.equippedAccessories = ['umbrella', 'bottle', 'keychain', 'map', 'clock'];
+    window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
+    this.showToast('Đã trang bị đầy đủ 5 nguồn lực lên ba lô của Lusi! ✨🎒', 'success');
+    this.render();
+  },
+
+  unequipAllBackpackAccessories: function() {
+    if (!this.state.currentUser) {
+      if (window.SERVICES?.Auth?.loginGuest) {
+        this.state.currentUser = window.SERVICES.Auth.loginGuest();
+      } else {
+        return;
+      }
+    }
+    const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);
+    userData.progress.ch3 = userData.progress.ch3 || {};
+    userData.progress.ch3.equippedAccessories = [];
+    window.SERVICES.Auth.saveUserData(this.state.currentUser.id, userData);
+    this.showToast('Đã tháo gỡ toàn bộ phụ kiện. Hãy tự tay kéo thả các nguồn lực vào ba lô nhé!', 'info');
+    this.render();
+  },
+
   saveLusiAnswer: function(qId, val) {
     if (!this.state.currentUser) return;
     const userData = window.SERVICES.Auth.getUserData(this.state.currentUser.id);

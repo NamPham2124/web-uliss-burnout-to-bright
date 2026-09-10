@@ -1044,6 +1044,9 @@ window.COMPONENTS = {
     const savedValveMethod = ch3Progress?.valveMethod || "";
     const backpackWeight = ch3Progress?.backpackWeight || 75;
     const selectedAccessory = ch3Progress?.selectedAccessory || "umbrella";
+    const equippedAccessories = Array.isArray(ch3Progress?.equippedAccessories)
+      ? ch3Progress.equippedAccessories 
+      : ['umbrella', 'bottle'];
     const backpackCategories = ch3Progress?.backpackCategories || {};
     const lusiAnswers = ch3Progress?.lusiAnswers || {};
     const groundingInputs = ch3Progress?.groundingInputs || {};
@@ -1150,69 +1153,217 @@ window.COMPONENTS = {
               </p>
             </div>
 
-            <!-- Ảnh minh họa chiếc ba lô và 5 phụ kiện chính thức từ sổ tay -->
-            <div class="flex justify-center pt-2">
-              <div class="rounded-2xl overflow-hidden shadow-lg border-2 border-teal-200 bg-white max-w-2xl w-full transition-transform hover:scale-[1.01] duration-300">
-                <img src="${ch.lusiBackpackExercise.backpackImage || 'assets/lusi_backpack.png'}" 
-                     alt="Bên ngoài chiếc balo - tôi đang có gì trong tay?" 
-                     class="w-full h-auto object-contain cursor-pointer"
-                     onclick="window.open('assets/lusi_backpack.png', '_blank')"
-                     title="Bấm để xem ảnh phóng to">
-              </div>
-            </div>
-
-            <div class="text-center text-[11px] text-slate-400 italic">
-              (Chạm vào ảnh để phóng to • Bấm chọn các phụ kiện bên dưới để khám phá ý nghĩa tâm lý học)
-            </div>
-
-            <!-- 5 Nguồn lực phụ kiện gắn ngoài ba lô tương tác -->
-            <div class="pt-2 space-y-3">
-              <div class="flex items-center justify-between">
-                <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center space-x-1.5">
-                  <i class="fas fa-key text-teal-600"></i>
-                  <span>5 Phụ kiện hỗ trợ trên ba lô của Lusi (Chọn để khám phá nguồn lực)</span>
-                </h4>
-                <span class="text-[10px] text-teal-700 font-semibold">Chạm vào phụ kiện để xem</span>
+            <!-- Sân khấu kéo thả phụ kiện vào Chiếc Ba Lô Lusi tương tác -->
+            <div class="space-y-4 pt-2">
+              <div class="text-center text-[11px] text-teal-800 bg-teal-50 border border-teal-200 py-1.5 px-3 rounded-full inline-block mx-auto">
+                <i class="fas fa-hand-rock text-teal-600 mr-1"></i>
+                <span class="font-bold">Kéo thả các phụ kiện</span> vào vị trí trên ba lô, hoặc <span class="font-bold">chạm/click</span> vào phụ kiện để gắn/tháo gỡ nhanh!
               </div>
 
-              <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                ${ch.lusiBackpackExercise.accessories.map(acc => {
-                  const isSelected = selectedAccessory === acc.id;
-                  return `
-                    <div onclick="APP.selectBackpackAccessory('${acc.id}')" 
-                         class="p-3 sm:p-3.5 rounded-2xl border text-center cursor-pointer transition-all flex flex-col justify-start items-center ${isSelected ? 'bg-teal-50 border-teal-500 ring-2 ring-teal-300 shadow-md transform -translate-y-0.5' : 'bg-white border-slate-200 hover:bg-teal-50/50 hover:border-teal-200'}">
-                      <div class="text-2xl mb-1">${acc.icon}</div>
-                      <div class="text-xs font-extrabold text-slate-800">${acc.name}</div>
-                      <div class="text-[10px] text-slate-600 mt-1 leading-snug break-words">${acc.meaning}</div>
-                    </div>
-                  `;
-                }).join('')}
+              <!-- Interactive Backpack Canvas / Drop Zone -->
+              <div class="flex justify-center">
+                <div id="backpackDropZone" 
+                     class="relative w-full max-w-[460px] aspect-[1200/1518] mx-auto rounded-3xl overflow-hidden border-2 border-teal-200/90 bg-gradient-to-b from-teal-50/50 via-white to-emerald-50/40 p-2 shadow-xl transition-all duration-300 select-none"
+                     ondragover="APP.handleBackpackDragOver(event)"
+                     ondragenter="APP.handleBackpackDragEnter(event)"
+                     ondragleave="APP.handleBackpackDragLeave(event)"
+                     ondrop="APP.handleBackpackDrop(event, null)">
+                  
+                  <!-- Hình ảnh thân ba lô trong suốt (Base) -->
+                  <img src="${ch.lusiBackpackExercise.backpackImage || 'assets/lusi_backpack_base.png'}" 
+                       alt="Chiếc ba lô của Lusi" 
+                       class="absolute inset-0 w-full h-full object-contain p-2 select-none pointer-events-none drop-shadow-sm">
+
+                  <!-- 5 Vị trí / Slot phụ kiện trên ba lô -->
+                  ${(() => {
+                    const slotConfigs = {
+                      umbrella: {
+                        style: 'left: 6%; top: 3%; width: 28%; height: 32%;',
+                        badgePos: 'top-1 left-1'
+                      },
+                      bottle: {
+                        style: 'left: 68%; top: 3%; width: 24%; height: 32%;',
+                        badgePos: 'top-1 right-1'
+                      },
+                      keychain: {
+                        style: 'left: 3%; top: 34%; width: 31%; height: 23%;',
+                        badgePos: 'top-1 left-1'
+                      },
+                      map: {
+                        style: 'left: 65%; top: 33%; width: 33%; height: 25%;',
+                        badgePos: 'top-1 right-1'
+                      },
+                      clock: {
+                        style: 'left: 38%; top: 62%; width: 24%; height: 26%;',
+                        badgePos: 'bottom-1 right-1'
+                      }
+                    };
+
+                    return ch.lusiBackpackExercise.accessories.map(acc => {
+                      const slot = slotConfigs[acc.id] || { style: '', badgePos: 'top-1 right-1' };
+                      const isEquipped = equippedAccessories.includes(acc.id);
+                      const isSelected = selectedAccessory === acc.id;
+
+                      if (isEquipped) {
+                        return `
+                          <div class="absolute group cursor-pointer transition-all duration-300 transform hover:scale-105 z-20"
+                               style="${slot.style}"
+                               onclick="APP.selectBackpackAccessory('${acc.id}')"
+                               title="${acc.name} — Bấm để xem ý nghĩa hoặc tháo gỡ">
+                            <img src="${acc.img}" alt="${acc.name}" 
+                                 class="w-full h-full object-contain filter drop-shadow-md select-none pointer-events-none transition-transform duration-300 group-hover:scale-110 ${isSelected ? 'ring-2 ring-teal-400 rounded-xl' : ''}">
+                            <button onclick="APP.unequipBackpackAccessory('${acc.id}', event)" 
+                                    title="Tháo ${acc.name} khỏi ba lô"
+                                    class="absolute ${slot.badgePos} w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center text-[9px] sm:text-[10px] shadow-md transition-transform transform scale-90 group-hover:scale-110 active:scale-95 z-30">
+                              <i class="fas fa-times"></i>
+                            </button>
+                            <span class="absolute -bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-slate-900/80 text-white text-[8px] sm:text-[9px] font-bold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow z-30">
+                              ${acc.name}
+                            </span>
+                          </div>
+                        `;
+                      } else {
+                        return `
+                          <div class="absolute group cursor-pointer transition-all duration-300 z-10"
+                               style="${slot.style}"
+                               onclick="APP.toggleBackpackAccessory('${acc.id}')"
+                               ondragover="APP.handleBackpackDragOver(event)"
+                               ondragenter="APP.handleBackpackDragEnter(event)"
+                               ondrop="APP.handleBackpackDrop(event, '${acc.id}')"
+                               title="Kéo thả hoặc chạm để gắn ${acc.name}">
+                            <div class="w-full h-full rounded-2xl border-2 border-dashed border-teal-400/60 bg-teal-50/40 hover:bg-teal-100/70 hover:border-teal-500 transition-all flex flex-col items-center justify-center p-1 text-center shadow-inner group-hover:scale-105">
+                              <span class="text-lg sm:text-xl opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all">${acc.icon}</span>
+                              <span class="text-[8px] sm:text-[9px] font-extrabold text-teal-800 opacity-85 mt-0.5 leading-tight">+ Gắn ${acc.name}</span>
+                            </div>
+                          </div>
+                        `;
+                      }
+                    }).join('');
+                  })()}
+                </div>
               </div>
 
-              <!-- Chi tiết phụ kiện đang chọn -->
+              <!-- Thanh Trạng Thái & Thao Tác Nhanh -->
+              <div class="p-3.5 sm:p-4 rounded-2xl bg-white border border-teal-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div class="space-y-1 flex-1">
+                  <div class="flex items-center space-x-2">
+                    <span class="text-xs font-extrabold text-teal-900 flex items-center space-x-1.5">
+                      <i class="fas fa-toolbox text-teal-600"></i>
+                      <span>Ba lô của Lusi:</span>
+                    </span>
+                    <span class="text-xs font-black px-2.5 py-0.5 rounded-full ${equippedAccessories.length === 5 ? 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-300' : 'bg-teal-100 text-teal-800'}">
+                      Đã trang bị ${equippedAccessories.length}/5 nguồn lực
+                    </span>
+                  </div>
+                  <!-- Thanh tiến độ trang bị -->
+                  <div class="w-full sm:w-64 bg-slate-100 rounded-full h-2 overflow-hidden">
+                    <div class="bg-gradient-to-r from-teal-500 to-emerald-500 h-2 rounded-full transition-all duration-500" style="width: ${(equippedAccessories.length / 5) * 100}%"></div>
+                  </div>
+                </div>
+
+                <!-- Các nút hành động nhanh -->
+                <div class="flex items-center space-x-2">
+                  <button onclick="APP.equipAllBackpackAccessories()" 
+                          class="px-3 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-sm transition-all flex items-center space-x-1.5 active:scale-95">
+                    <i class="fas fa-magic"></i>
+                    <span>Gắn cả 5 nguồn lực</span>
+                  </button>
+                  <button onclick="APP.unequipAllBackpackAccessories()" 
+                          class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-700 hover:text-rose-700 border border-slate-200 hover:border-rose-200 font-bold text-xs transition-all flex items-center space-x-1.5 active:scale-95">
+                    <i class="fas fa-undo"></i>
+                    <span>Tháo rời làm lại</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Khay 5 Nguồn lực phụ kiện có thể kéo thả -->
+              <div class="space-y-2 pt-1">
+                <div class="flex items-center justify-between text-xs px-1">
+                  <h4 class="font-bold text-slate-800 uppercase tracking-wider flex items-center space-x-1.5">
+                    <i class="fas fa-grip-vertical text-teal-600"></i>
+                    <span>Khay 5 phụ kiện nguồn lực (Kéo thả vào ba lô hoặc Chạm để gắn)</span>
+                  </h4>
+                  <span class="text-[11px] text-teal-700 font-semibold hidden sm:inline">Kéo thẻ hoặc bấm vào nút</span>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                  ${ch.lusiBackpackExercise.accessories.map(acc => {
+                    const isEquipped = equippedAccessories.includes(acc.id);
+                    const isSelected = selectedAccessory === acc.id;
+                    return `
+                      <div draggable="true"
+                           ondragstart="APP.handleAccessoryDragStart(event, '${acc.id}')"
+                           ondragend="APP.handleAccessoryDragEnd(event)"
+                           onclick="APP.toggleBackpackAccessory('${acc.id}')"
+                           class="group p-3 rounded-2xl border text-center cursor-pointer transition-all flex flex-col justify-between items-center relative select-none ${isEquipped ? 'bg-emerald-50/70 border-emerald-300 ring-1 ring-emerald-300 shadow-sm' : 'bg-white border-slate-200 hover:bg-teal-50/40 hover:border-teal-300 shadow-sm'} ${isSelected ? 'ring-2 ring-teal-500' : ''}">
+                        
+                        <div class="w-full flex justify-between items-center mb-1 text-[10px]">
+                          <span class="font-extrabold px-1.5 py-0.5 rounded ${isEquipped ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'}">
+                            ${isEquipped ? '✓ Trong ba lô' : 'Chưa gắn'}
+                          </span>
+                          <span class="text-slate-400 group-hover:text-teal-600" title="Có thể kéo thả">
+                            <i class="fas fa-grip-lines"></i>
+                          </span>
+                        </div>
+
+                        <div class="w-14 h-14 sm:w-16 sm:h-16 my-1 flex items-center justify-center">
+                          <img src="${acc.img}" alt="${acc.name}" class="max-w-full max-h-full object-contain filter drop-shadow-sm transition-transform group-hover:scale-110 pointer-events-none">
+                        </div>
+
+                        <div class="w-full mt-1">
+                          <div class="text-xs font-extrabold text-slate-800 flex items-center justify-center space-x-1">
+                            <span>${acc.icon}</span>
+                            <span>${acc.name}</span>
+                          </div>
+                          <div class="text-[9px] text-slate-500 mt-0.5 leading-snug line-clamp-2">${acc.meaning}</div>
+                        </div>
+
+                        <div class="w-full mt-2 pt-2 border-t border-slate-100">
+                          <button onclick="event.stopPropagation(); APP.toggleBackpackAccessory('${acc.id}')" 
+                                  class="w-full py-1 px-2 rounded-lg text-[10px] font-bold transition-all ${isEquipped ? 'bg-rose-50 text-rose-700 hover:bg-rose-100' : 'bg-teal-600 text-white hover:bg-teal-700 shadow-sm'}">
+                            ${isEquipped ? 'Tháo gỡ' : '+ Gắn vào ba lô'}
+                          </button>
+                        </div>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+
+              <!-- Chi tiết phụ kiện đang chọn & Áp dụng cho Câu 3 -->
               ${(() => {
                 const curAcc = ch.lusiBackpackExercise.accessories.find(a => a.id === selectedAccessory) || ch.lusiBackpackExercise.accessories[0];
+                const isEquipped = equippedAccessories.includes(curAcc.id);
                 return `
-                  <div class="p-4 rounded-2xl bg-teal-50/80 border border-teal-300 flex items-start space-x-3 text-xs shadow-sm">
-                    <div class="text-3xl flex-shrink-0">${curAcc.icon}</div>
+                  <div class="p-4 rounded-2xl bg-teal-50/90 border border-teal-300 flex items-start space-x-3 text-xs shadow-sm">
+                    <div class="w-12 h-12 flex-shrink-0 flex items-center justify-center bg-white rounded-xl border border-teal-200 p-1">
+                      <img src="${curAcc.img}" alt="${curAcc.name}" class="max-w-full max-h-full object-contain">
+                    </div>
                     <div class="flex-1">
                       <div class="font-bold text-teal-900 text-sm flex items-center space-x-2">
                         <span>${curAcc.name}: Nguồn lực tiếp sức cho bạn</span>
-                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-200 text-teal-800">Đang chọn</span>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${isEquipped ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}">
+                          ${isEquipped ? '✓ Đã gắn vào ba lô' : 'Chưa gắn'}
+                        </span>
                       </div>
                       <p class="text-slate-700 mt-1 leading-relaxed">${curAcc.meaning}</p>
-                      <div class="mt-2.5 flex items-center space-x-2">
+                      <div class="mt-2.5 flex flex-wrap items-center gap-2">
                         <button onclick="
                           const ans3 = document.getElementById('lusiAns3');
                           if (ans3) {
                             ans3.value = 'Mình chọn ${curAcc.name}: ${curAcc.meaning}. Đây là nguồn lực mình cảm thấy cần nhất hiện tại.';
                             APP.saveLusiAnswer('q3', ans3.value);
                           }
-                        " class="px-3.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-[11px] inline-flex items-center space-x-1.5 shadow-sm transition-all">
+                        " class="px-3.5 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-[11px] inline-flex items-center space-x-1.5 shadow-sm transition-all active:scale-95">
                           <i class="fas fa-check-circle text-xs"></i>
                           <span>Áp dụng nguồn lực này cho Câu 3</span>
                         </button>
-                        <span class="text-[10px] text-slate-500 italic">(Tự động điền vào Câu 3 bên dưới)</span>
+                        <button onclick="APP.toggleBackpackAccessory('${curAcc.id}')" 
+                                class="px-3 py-1.5 rounded-xl ${isEquipped ? 'bg-rose-100 text-rose-800 hover:bg-rose-200' : 'bg-emerald-600 text-white hover:bg-emerald-700'} font-bold text-[11px] inline-flex items-center space-x-1 shadow-sm transition-all active:scale-95">
+                          <i class="fas ${isEquipped ? 'fa-minus-circle' : 'fa-plus-circle'} text-xs"></i>
+                          <span>${isEquipped ? 'Tháo phụ kiện này' : 'Gắn phụ kiện này vào ba lô'}</span>
+                        </button>
+                        <span class="text-[10px] text-slate-500 italic">(Bấm để tự động điền vào Câu 3 bên dưới)</span>
                       </div>
                     </div>
                   </div>

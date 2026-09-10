@@ -263,13 +263,13 @@ window.APP_DATA = {
         title: "Chiếc ba lô của Lusi: Phân loại áp lực & Khám phá nguồn lực",
         subtitle: "Bên ngoài chiếc ba lô — tôi đang có gì trong tay?",
         instruction: "Bên cạnh áp lực trong chiếc ba lô nặng nề, Lusi vẫn luôn có những nguồn lực hỗ trợ xung quanh. Hãy cùng mở từng ngăn cặp, quan sát các phụ kiện gắn ngoài để khám phá những điểm tựa bạn đang có trong tay nhé!",
-        backpackImage: "assets/lusi_backpack.png",
+        backpackImage: "assets/lusi_backpack_base.png",
         accessories: [
-          { id: "umbrella", icon: "🌂", name: "Chiếc ô", meaning: "Những người có thể lắng nghe và hỗ trợ Lusi khi gặp khó khăn (bạn bè, thầy cô, gia đình)" },
-          { id: "bottle", icon: "💧", name: "Bình nước", meaning: "Điều giúp Lusi duy trì năng lượng và tiếp tục bước đi (nghỉ ngơi, ăn uống, thể thao)" },
-          { id: "keychain", icon: "🔑", name: "Móc khóa", meaning: "Kỹ năng, kinh nghiệm và điểm mạnh Lusi có thể vận dụng" },
-          { id: "map", icon: "🗺️", name: "Bản đồ", meaning: "Điều giúp Lusi định hướng con đường phù hợp với bản thân" },
-          { id: "clock", icon: "⏰", name: "Đồng hồ", meaning: "Điều giúp Lusi lấy lại cảm giác cân bằng và quản lý thời gian trong học tập" }
+          { id: "umbrella", icon: "🌂", img: "assets/acc_umbrella.png", name: "Chiếc ô", slotLabel: "Ngăn trên (Trái)", meaning: "Những người có thể lắng nghe và hỗ trợ Lusi khi gặp khó khăn (bạn bè, thầy cô, gia đình)" },
+          { id: "bottle", icon: "💧", img: "assets/acc_bottle.png", name: "Bình nước", slotLabel: "Ngăn trên (Phải)", meaning: "Điều giúp Lusi duy trì năng lượng và tiếp tục bước đi (nghỉ ngơi, ăn uống, thể thao)" },
+          { id: "keychain", icon: "🔑", img: "assets/acc_keychain.png", name: "Móc khóa ngôi sao", slotLabel: "Dây đeo (Trái)", meaning: "Kỹ năng, kinh nghiệm và điểm mạnh Lusi có thể vận dụng" },
+          { id: "map", icon: "🗺️", img: "assets/acc_map.png", name: "Bản đồ", slotLabel: "Ngăn bên (Phải)", meaning: "Điều giúp Lusi định hướng con đường phù hợp với bản thân" },
+          { id: "clock", icon: "⏰", img: "assets/acc_clock.png", name: "Đồng hồ / La bàn", slotLabel: "Nắp ngăn trước", meaning: "Điều giúp Lusi lấy lại cảm giác cân bằng và quản lý thời gian trong học tập" }
         ],
         classificationItems: [
           { id: "i1", text: "Sự kiên trì & Đam mê học hỏi", defaultCategory: "keep" },
